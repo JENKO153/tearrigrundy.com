@@ -3,7 +3,10 @@
   const navToggle = document.getElementById('navToggle');
   const navLinks = document.getElementById('navLinks');
   if (navToggle && navLinks) {
-    navToggle.addEventListener('click', () => navLinks.classList.toggle('open'));
+    navToggle.addEventListener('click', () => {
+      navLinks.classList.toggle('open');
+      navToggle.classList.toggle('active');
+    });
   }
   document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -76,6 +79,9 @@
         </div>
       </article>
     `).join('');
+
+    grid.classList.add('reveal-group');
+    window.ScrollReveal.observe(grid);
   }
 
   searchInput.addEventListener('input', (e) => {

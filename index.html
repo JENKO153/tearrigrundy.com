@@ -26,6 +26,8 @@
 </header>
 
 <section class="hero">
+  <div class="hero-bg" style="background-image:url('/images/banner-hero.jpg')"></div>
+  <div class="hero-scrim"></div>
   <div class="hero-content">
     <span class="hero-eyebrow">Travel Journal</span>
     <h1>Stories From Everywhere Between Home and the Next Departure Gate</h1>
@@ -36,13 +38,13 @@
 
 <section>
   <div class="container about-teaser">
-    <div>
+    <div class="reveal-left">
       <span class="section-heading eyebrow" style="display:block;margin-bottom:10px;">Hello, I'm Tearri</span>
       <h2>I write about the places I go and the things I get wrong along the way</h2>
       <p>This blog started as a way to remember my own trips and turned into something bigger — a collection of guides, food crawls, and slow-travel stories for anyone plotting their next trip. No sponsored fluff, just what I'd tell a friend.</p>
       <a href="/about/" class="btn btn-outline">More About Me</a>
     </div>
-    <div class="img-wrap">
+    <div class="img-wrap reveal-right">
       <img src="/images/Homescreen feature image.JPG" alt="Tearri overlooking the mountains near Banff, Canada">
     </div>
   </div>
@@ -50,7 +52,7 @@
 
 <section id="latest">
   <div class="container">
-    <div class="section-heading">
+    <div class="section-heading reveal">
       <span class="eyebrow">Fresh Off the Plane</span>
       <h2>Latest Posts</h2>
     </div>
@@ -80,6 +82,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/data.js"></script>
+<script src="/js/reveal.js"></script>
 <script src="/js/home.js"></script>
 </body>
 </html>

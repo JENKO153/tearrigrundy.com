@@ -1,12 +1,29 @@
-/* Home page: mobile nav toggle + renders the latest posts grid. */
+/* Home page: mobile nav toggle, hero parallax, and renders the latest posts grid. */
 (function () {
   const navToggle = document.getElementById('navToggle');
   const navLinks = document.getElementById('navLinks');
   if (navToggle && navLinks) {
-    navToggle.addEventListener('click', () => navLinks.classList.toggle('open'));
+    navToggle.addEventListener('click', () => {
+      navLinks.classList.toggle('open');
+      navToggle.classList.toggle('active');
+    });
   }
 
   document.getElementById('year').textContent = new Date().getFullYear();
+
+  // Subtle parallax on the hero photo as the page scrolls.
+  const heroBg = document.querySelector('.hero-bg');
+  if (heroBg && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        heroBg.style.transform = `translateY(${window.scrollY * 0.25}px)`;
+        ticking = false;
+      });
+    }, { passive: true });
+  }
 
   function escapeHtml(str) {
     const div = document.createElement('div');
@@ -43,6 +60,9 @@
         </div>
       </article>
     `).join('');
+
+    container.classList.add('reveal-group');
+    window.ScrollReveal.observe(container);
   }
 
   renderLatestPosts();

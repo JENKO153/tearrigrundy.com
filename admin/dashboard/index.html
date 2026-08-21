@@ -21,6 +21,12 @@
   </nav>
 </header>
 
+<section style="padding-bottom:0;">
+  <div class="container">
+    <div class="welcome-banner">Welcome back, Butterfly <span>xxx</span></div>
+  </div>
+</section>
+
 <section>
   <div class="container dashboard">
 
@@ -30,6 +36,9 @@
       </div>
 
       <div class="form-success" id="formSuccess">Post published! It's now live on the blog.</div>
+      <div class="form-success" id="draftRestored" style="background:var(--sand);color:var(--ink);">
+        Draft restored from your last session. <button type="button" id="discardDraftBtn" class="icon-btn" style="text-decoration:underline;">Discard it and start blank</button>
+      </div>
 
       <form id="postForm">
         <div class="form-group">
@@ -51,7 +60,7 @@
 
         <div class="form-group">
           <label for="imageFile">Cover Image</label>
-          <input type="file" id="imageFile" accept="image/*" required>
+          <input type="file" id="imageFile" accept="image/*">
           <img id="imagePreview" alt="" style="display:none;margin-top:12px;border-radius:8px;max-height:180px;object-fit:cover;width:100%;">
         </div>
 
@@ -67,7 +76,13 @@
           <button type="button" id="addBlockBtn" class="btn btn-outline" style="padding:9px 20px;font-size:0.85rem;">+ Add Block</button>
         </div>
 
-        <button type="submit" class="btn btn-full">Publish Post</button>
+        <div class="form-group">
+          <label for="publishAt">Publish Date &amp; Time</label>
+          <input type="datetime-local" id="publishAt" required>
+          <p style="font-size:0.8rem;color:var(--ink-light);margin:6px 0 0;font-weight:400;text-transform:none;letter-spacing:0;">Leave this as now to publish right away, or pick a future date and time to schedule it — it'll go live on its own, right on time.</p>
+        </div>
+
+        <button type="submit" class="btn btn-full" id="submitBtn">Publish Post</button>
       </form>
     </div>
 
@@ -82,6 +97,22 @@
 
   </div>
 </section>
+
+<div class="modal-overlay" id="confirmModal" style="display:none;">
+  <div class="modal-card">
+    <h3>Confirm It's You</h3>
+    <p id="confirmMessage" style="color:var(--ink-light);font-size:0.9rem;margin-bottom:16px;">Enter your password to continue.</p>
+    <div class="form-error" id="confirmError">Incorrect password. Try again.</div>
+    <div class="form-group">
+      <label for="confirmPassword">Password</label>
+      <input type="password" id="confirmPassword" autocomplete="current-password">
+    </div>
+    <div style="display:flex;gap:12px;margin-top:8px;">
+      <button type="button" class="btn btn-outline" id="confirmCancelBtn" style="flex:1;">Cancel</button>
+      <button type="button" class="btn" id="confirmSubmitBtn" style="flex:1;">Confirm</button>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/data.js"></script>

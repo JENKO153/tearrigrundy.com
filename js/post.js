@@ -3,7 +3,10 @@
   const navToggle = document.getElementById('navToggle');
   const navLinks = document.getElementById('navLinks');
   if (navToggle && navLinks) {
-    navToggle.addEventListener('click', () => navLinks.classList.toggle('open'));
+    navToggle.addEventListener('click', () => {
+      navLinks.classList.toggle('open');
+      navToggle.classList.toggle('active');
+    });
   }
   document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -63,24 +66,28 @@
     const bodyHtml = blocks.map(renderBlock).join('');
     const readingMinutes = estimateReadingMinutes(blocks);
 
-    document.getElementById('postContainer').innerHTML = `
-      <div class="post-hero">
-        <div class="container">
-          <span class="post-category">${escapeHtml(post.category)}</span>
-          <h1>${escapeHtml(post.title)}</h1>
-          <div class="post-meta">${formatDate(post.date)} &middot; by ${escapeHtml(post.author)} &middot; ${readingMinutes} min read</div>
+    const postContainer = document.getElementById('postContainer');
+    postContainer.innerHTML = `
+      <div class="reveal">
+        <div class="post-hero">
+          <div class="container">
+            <span class="post-category">${escapeHtml(post.category)}</span>
+            <h1>${escapeHtml(post.title)}</h1>
+            <div class="post-meta">${formatDate(post.date)} &middot; by ${escapeHtml(post.author)} &middot; ${readingMinutes} min read</div>
+          </div>
         </div>
-      </div>
-      <div class="container">
-        <img class="post-hero-img" src="${escapeHtml(post.image)}" alt="${escapeHtml(post.title)}">
-        <div class="post-body">
-          ${bodyHtml}
-          <div class="post-body-footer">
-            <a class="btn btn-outline" href="/blog/">&larr; Back to All Posts</a>
+        <div class="container">
+          <img class="post-hero-img" src="${escapeHtml(post.image)}" alt="${escapeHtml(post.title)}">
+          <div class="post-body">
+            ${bodyHtml}
+            <div class="post-body-footer">
+              <a class="btn btn-outline" href="/blog/">&larr; Back to All Posts</a>
+            </div>
           </div>
         </div>
       </div>
     `;
+    window.ScrollReveal.observe(postContainer.querySelector('.reveal'));
   }
 
   function renderRelated(post, allPosts) {
@@ -91,7 +98,8 @@
     if (related.length === 0) return;
 
     document.getElementById('relatedSection').style.display = '';
-    document.getElementById('relatedPosts').innerHTML = related.map((p) => `
+    const relatedGrid = document.getElementById('relatedPosts');
+    relatedGrid.innerHTML = related.map((p) => `
       <article class="post-card">
         <img class="post-card-img" src="${escapeHtml(p.image)}" alt="${escapeHtml(p.title)}">
         <div class="post-card-body">
@@ -103,6 +111,8 @@
         </div>
       </article>
     `).join('');
+    relatedGrid.classList.add('reveal-group');
+    window.ScrollReveal.observe(relatedGrid);
   }
 
   (async function init() {
