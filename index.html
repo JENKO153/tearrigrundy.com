@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tearri Grundy | Travel Blog</title>
+<meta name="description" content="Stories, guides, and photos from a life spent chasing the next departure gate.">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <nav class="nav">
+    <a href="index.html" class="nav-logo">Tearri <span>Grundy</span></a>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="index.html" class="active">Home</a></li>
+      <li><a href="blog.html">Blog</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="hero-content">
+    <span class="hero-eyebrow">Travel Journal</span>
+    <h1>Stories From Everywhere Between Home and the Next Departure Gate</h1>
+    <p>Honest travel guides, food finds, and a few lessons learned the hard way — one country at a time.</p>
+    <a href="blog.html" class="btn">Read the Blog</a>
+  </div>
+</section>
+
+<section>
+  <div class="container about-teaser">
+    <div>
+      <span class="section-heading eyebrow" style="display:block;margin-bottom:10px;">Hello, I'm Tearri</span>
+      <h2>I write about the places I go and the things I get wrong along the way</h2>
+      <p>This blog started as a way to remember my own trips and turned into something bigger — a collection of guides, food crawls, and slow-travel stories for anyone plotting their next trip. No sponsored fluff, just what I'd tell a friend.</p>
+      <a href="about.html" class="btn btn-outline">More About Me</a>
+    </div>
+    <div class="img-wrap">
+      <img src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=800&q=80" alt="Traveler looking out over a scenic coastline">
+    </div>
+  </div>
+</section>
+
+<section id="latest">
+  <div class="container">
+    <div class="section-heading">
+      <span class="eyebrow">Fresh Off the Plane</span>
+      <h2>Latest Posts</h2>
+    </div>
+    <div class="posts-grid" id="latestPosts">
+      <!-- populated by js/home.js -->
+    </div>
+    <div style="text-align:center;margin-top:48px;">
+      <a href="blog.html" class="btn btn-outline">View All Posts</a>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div>
+      <div class="footer-logo">Tearri Grundy</div>
+      <p style="max-width:280px;color:var(--ink-light);font-size:0.9rem;">Travel stories, food finds, and honest guides from wherever the passport gets stamped next.</p>
+    </div>
+    <ul class="footer-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="blog.html">Blog</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+  </div>
+  <div class="footer-bottom">&copy; <span id="year"></span> Tearri Grundy. All rights reserved.</div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/data.js"></script>
+<script src="js/home.js"></script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Write a Post | Tearri Grundy</title>
+<link rel="icon" type="image/png" href="../images/favicon.png">
+<link rel="apple-touch-icon" href="../images/apple-touch-icon.png">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <nav class="nav">
+    <a href="../index.html" class="nav-logo">Tearri <span>Grundy</span></a>
+    <div>
+      <a href="../blog.html" class="btn btn-outline" style="padding:9px 20px;font-size:0.85rem;margin-right:10px;">View Blog</a>
+      <button class="btn" id="logoutBtn" style="padding:9px 20px;font-size:0.85rem;">Log Out</button>
+    </div>
+  </nav>
+</header>
+
+<section>
+  <div class="container dashboard">
+
+    <div class="dashboard-panel">
+      <div class="dashboard-header">
+        <h2 style="margin:0;">Write a New Post</h2>
+      </div>
+
+      <div class="form-success" id="formSuccess">Post published! It's now live on the blog.</div>
+
+      <form id="postForm">
+        <div class="form-group">
+          <label for="title">Title</label>
+          <input type="text" id="title" required placeholder="e.g. Two Days in Kyoto">
+        </div>
+
+        <div class="form-group">
+          <label for="category">Category</label>
+          <select id="category" required>
+            <option value="">Select a category</option>
+            <option>Destinations</option>
+            <option>Food & Drink</option>
+            <option>Travel Tips</option>
+            <option>Culture</option>
+            <option>Adventure</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="imageFile">Cover Image</label>
+          <input type="file" id="imageFile" accept="image/*" required>
+          <img id="imagePreview" alt="" style="display:none;margin-top:12px;border-radius:8px;max-height:180px;object-fit:cover;width:100%;">
+        </div>
+
+        <div class="form-group">
+          <label for="excerpt">Short Excerpt</label>
+          <input type="text" id="excerpt" required placeholder="One sentence that appears on the blog cards" maxlength="160">
+        </div>
+
+        <div class="form-group">
+          <label>Post Content</label>
+          <p style="font-size:0.82rem;color:var(--ink-light);margin:-4px 0 12px;font-weight:400;text-transform:none;letter-spacing:0;">Build your post block by block. Pick a style for each one — titles and subtitles break up the story, and paragraphs come in three sizes.</p>
+          <div id="contentBlocks"><!-- rows injected by js/admin-dashboard.js --></div>
+          <button type="button" id="addBlockBtn" class="btn btn-outline" style="padding:9px 20px;font-size:0.85rem;">+ Add Block</button>
+        </div>
+
+        <button type="submit" class="btn btn-full">Publish Post</button>
+      </form>
+    </div>
+
+    <div class="dashboard-panel">
+      <div class="dashboard-header">
+        <h2 style="margin:0;">Published Posts</h2>
+      </div>
+      <div id="postsList">
+        <!-- populated by js/admin-dashboard.js -->
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/data.js"></script>
+<script src="../js/admin-dashboard.js"></script>
+</body>
+</html>

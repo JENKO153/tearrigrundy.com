@@ -1,0 +1,141 @@
+/*
+ * Shared post storage + auth for the blog, backed by Supabase.
+ * The anon key below is safe to expose client-side — row-level security
+ * policies on the `posts` table (and storage bucket) are what actually
+ * gate writes to logged-in users. Loaded before every page-specific script.
+ */
+(function (window) {
+  const SUPABASE_URL = 'https://cbadidkhyepefebjnvsl.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNiYWRpZGtoeWVwZWZlYmpudnNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMDE2NjAsImV4cCI6MjEwMjg3NzY2MH0.P_qjeExCaflk4hhP7JT-8PnRCD7HJU8bKvXRFV2nAdw';
+
+  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  function rowToPost(row) {
+    return {
+      id: row.slug,
+      title: row.title,
+      category: row.category,
+      excerpt: row.excerpt,
+      image: row.image_url,
+      date: row.published_at,
+      author: row.author,
+      content: row.content
+    };
+  }
+
+  function slugify(title) {
+    const base = title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    return `${base}-${Date.now().toString(36)}`;
+  }
+
+  async function getPosts() {
+    const { data, error } = await client
+      .from('posts')
+      .select('*')
+      .order('published_at', { ascending: false });
+    if (error) {
+      console.error('Could not load posts', error);
+      return [];
+    }
+    return data.map(rowToPost);
+  }
+
+  async function getPostById(slug) {
+    const { data, error } = await client
+      .from('posts')
+      .select('*')
+      .eq('slug', slug)
+      .maybeSingle();
+    if (error || !data) return null;
+    return rowToPost(data);
+  }
+
+  async function getCategories() {
+    const posts = await getPosts();
+    return Array.from(new Set(posts.map((p) => p.category))).sort();
+  }
+
+  async function addPost(post) {
+    const row = {
+      slug: slugify(post.title || 'post'),
+      title: post.title,
+      category: post.category,
+      excerpt: post.excerpt,
+      image_url: post.image,
+      content: post.content,
+      author: post.author || 'Tearri',
+      published_at: post.date || new Date().toISOString().slice(0, 10)
+    };
+    const { data, error } = await client.from('posts').insert(row).select().single();
+    if (error) throw error;
+    return rowToPost(data);
+  }
+
+  async function deletePost(slug) {
+    const { error } = await client.from('posts').delete().eq('slug', slug);
+    if (error) throw error;
+  }
+
+  // Shrinks an uploaded image to a max dimension, re-encodes as JPEG, and
+  // uploads it to the `post-images` storage bucket, returning its public URL.
+  function resizeImage(file, maxDim = 1600, quality = 0.82) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error);
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Could not read that image file.'));
+        img.onload = () => {
+          const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function uploadImage(file) {
+    const blob = await resizeImage(file);
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+    const { error } = await client.storage.from('post-images').upload(path, blob, {
+      contentType: 'image/jpeg'
+    });
+    if (error) throw error;
+    const { data } = client.storage.from('post-images').getPublicUrl(path);
+    return data.publicUrl;
+  }
+
+  async function login(email, password) {
+    const { error } = await client.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  }
+
+  async function logout() {
+    await client.auth.signOut();
+  }
+
+  async function getSession() {
+    const { data } = await client.auth.getSession();
+    return data.session;
+  }
+
+  window.BlogData = {
+    getPosts,
+    getPostById,
+    getCategories,
+    addPost,
+    deletePost,
+    uploadImage
+  };
+
+  window.BlogAuth = {
+    login,
+    logout,
+    getSession
+  };
+})(window);

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blog | Tearri Grundy</title>
+<meta name="description" content="All travel stories and guides, filterable by category.">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <nav class="nav">
+    <a href="index.html" class="nav-logo">Tearri <span>Grundy</span></a>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="blog.html" class="active">Blog</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+  </nav>
+</header>
+
+<section class="post-hero" style="padding-bottom:0;">
+  <div class="container">
+    <span class="hero-eyebrow" style="color:var(--teal);">All Stories</span>
+    <h1>The Blog</h1>
+    <p style="max-width:560px;margin:0 auto;color:var(--ink-light);">Every post, sorted newest first. Filter by category or search for a place, dish, or trip type.</p>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <div class="filter-bar">
+      <div class="filter-tags" id="filterTags">
+        <button class="filter-tag active" data-category="all">All</button>
+        <!-- more categories injected by js/blog.js -->
+      </div>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search posts...">
+    </div>
+
+    <div class="posts-grid" id="postsGrid">
+      <!-- populated by js/blog.js -->
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div>
+      <div class="footer-logo">Tearri Grundy</div>
+      <p style="max-width:280px;color:var(--ink-light);font-size:0.9rem;">Travel stories, food finds, and honest guides from wherever the passport gets stamped next.</p>
+    </div>
+    <ul class="footer-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="blog.html">Blog</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+  </div>
+  <div class="footer-bottom">&copy; <span id="year"></span> Tearri Grundy. All rights reserved.</div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/data.js"></script>
+<script src="js/blog.js"></script>
+</body>
+</html>
