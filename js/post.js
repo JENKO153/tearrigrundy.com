@@ -23,7 +23,7 @@
       <div class="container" style="padding:80px 24px;text-align:center;">
         <h1>Post Not Found</h1>
         <p style="color:var(--ink-light);">This post may have been removed or the link is incorrect.</p>
-        <a class="btn" href="blog.html">Back to the Blog</a>
+        <a class="btn" href="/blog/">Back to the Blog</a>
       </div>
     `;
   }
@@ -76,7 +76,7 @@
         <div class="post-body">
           ${bodyHtml}
           <div class="post-body-footer">
-            <a class="btn btn-outline" href="blog.html">&larr; Back to All Posts</a>
+            <a class="btn btn-outline" href="/blog/">&larr; Back to All Posts</a>
           </div>
         </div>
       </div>
@@ -96,10 +96,10 @@
         <img class="post-card-img" src="${escapeHtml(p.image)}" alt="${escapeHtml(p.title)}">
         <div class="post-card-body">
           <span class="post-category">${escapeHtml(p.category)}</span>
-          <h3><a href="post.html?id=${encodeURIComponent(p.id)}">${escapeHtml(p.title)}</a></h3>
+          <h3><a href="/post/?id=${encodeURIComponent(p.id)}">${escapeHtml(p.title)}</a></h3>
           <div class="post-meta">${formatDate(p.date)}</div>
           <p class="post-excerpt">${escapeHtml(p.excerpt)}</p>
-          <a class="read-more" href="post.html?id=${encodeURIComponent(p.id)}">Read More &rarr;</a>
+          <a class="read-more" href="/post/?id=${encodeURIComponent(p.id)}">Read More &rarr;</a>
         </div>
       </article>
     `).join('');

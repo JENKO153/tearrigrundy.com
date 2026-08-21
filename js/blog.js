@@ -69,10 +69,10 @@
         <img class="post-card-img" src="${escapeHtml(post.image)}" alt="${escapeHtml(post.title)}">
         <div class="post-card-body">
           <span class="post-category">${escapeHtml(post.category)}</span>
-          <h3><a href="post.html?id=${encodeURIComponent(post.id)}">${escapeHtml(post.title)}</a></h3>
+          <h3><a href="/post/?id=${encodeURIComponent(post.id)}">${escapeHtml(post.title)}</a></h3>
           <div class="post-meta">${formatDate(post.date)} &middot; by ${escapeHtml(post.author)}</div>
           <p class="post-excerpt">${escapeHtml(post.excerpt)}</p>
-          <a class="read-more" href="post.html?id=${encodeURIComponent(post.id)}">Read More &rarr;</a>
+          <a class="read-more" href="/post/?id=${encodeURIComponent(post.id)}">Read More &rarr;</a>
         </div>
       </article>
     `).join('');

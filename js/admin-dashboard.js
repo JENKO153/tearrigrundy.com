@@ -30,7 +30,7 @@
           <div class="post-row-meta">${escapeHtml(post.category)} &middot; ${formatDate(post.date)}</div>
         </div>
         <div class="post-row-actions">
-          <a class="icon-btn" href="../post.html?id=${encodeURIComponent(post.id)}" target="_blank" rel="noopener">View</a>
+          <a class="icon-btn" href="/post/?id=${encodeURIComponent(post.id)}" target="_blank" rel="noopener">View</a>
           <button class="icon-btn danger" data-delete="${escapeHtml(post.id)}">Delete</button>
         </div>
       </div>
@@ -184,13 +184,13 @@
   (async function init() {
     const session = await BlogAuth.getSession();
     if (!session) {
-      window.location.href = 'login.html';
+      window.location.href = '/admin/login/';
       return;
     }
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       await BlogAuth.logout();
-      window.location.href = 'login.html';
+      window.location.href = '/admin/login/';
     });
 
     renderPostsList();

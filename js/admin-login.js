@@ -5,7 +5,7 @@
 
   (async function redirectIfLoggedIn() {
     const session = await BlogAuth.getSession();
-    if (session) window.location.href = 'dashboard.html';
+    if (session) window.location.href = '/admin/dashboard/';
   })();
 
   form.addEventListener('submit', async (e) => {
@@ -20,7 +20,7 @@
 
     try {
       await BlogAuth.login(email, password);
-      window.location.href = 'dashboard.html';
+      window.location.href = '/admin/dashboard/';
     } catch (err) {
       errorBox.classList.add('show');
       document.getElementById('password').value = '';
