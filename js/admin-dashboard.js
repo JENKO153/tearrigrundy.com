@@ -38,12 +38,21 @@
   }
 
   function renderPreviewBlock(block) {
+    if (block.style === 'photo') {
+      if (!block.image) return '';
+      const caption = block.text ? `<figcaption>${escapeHtml(block.text)}</figcaption>` : '';
+      return `<figure class="post-block-photo"><img src="${escapeHtml(block.image)}" alt="${escapeHtml(block.text || '')}">${caption}</figure>`;
+    }
     const text = escapeHtml(block.text);
     switch (block.style) {
       case 'title': return `<h2>${text}</h2>`;
       case 'subtitle': return `<h3 class="post-block-subtitle">${text}</h3>`;
       case 'paragraph-lg': return `<p class="post-block-lead">${text}</p>`;
       case 'paragraph-sm': return `<p class="post-block-sm">${text}</p>`;
+      case 'bullets': {
+        const items = text.split('\n').map((s) => s.trim()).filter(Boolean).map((s) => `<li>${s}</li>`).join('');
+        return items ? `<ul>${items}</ul>` : '';
+      }
       default: return `<p>${text}</p>`;
     }
   }
@@ -163,10 +172,20 @@
     { value: 'subtitle', label: 'Subtitle' },
     { value: 'paragraph-lg', label: 'Paragraph — Large' },
     { value: 'paragraph', label: 'Paragraph — Normal' },
-    { value: 'paragraph-sm', label: 'Paragraph — Small' }
+    { value: 'paragraph-sm', label: 'Paragraph — Small' },
+    { value: 'bullets', label: 'Bullet List' },
+    { value: 'photo', label: 'Photo' }
   ];
 
-  function createBlockRow(style, text) {
+  function setRowMode(row, style) {
+    const isPhoto = style === 'photo';
+    const textEl = row.querySelector('.block-text');
+    textEl.style.display = isPhoto ? 'none' : '';
+    textEl.placeholder = style === 'bullets' ? 'One point per line...' : "Write this block's text...";
+    row.querySelector('.block-photo-field').classList.toggle('show', isPhoto);
+  }
+
+  function createBlockRow(style, text, image) {
     const row = document.createElement('div');
     row.className = 'content-block-row';
 
@@ -181,14 +200,30 @@
         </div>
       </div>
       <textarea class="block-text" placeholder="Write this block's text..."></textarea>
+      <div class="block-photo-field">
+        <input type="file" class="block-photo-file" accept="image/*">
+        <img class="block-photo-preview" alt="">
+        <input type="text" class="block-photo-caption" placeholder="Caption (optional)">
+      </div>
     `;
-    row.querySelector('.block-style').value = style || 'paragraph';
-    row.querySelector('.block-text').value = text || '';
+    const resolvedStyle = style || 'paragraph';
+    row.querySelector('.block-style').value = resolvedStyle;
+    if (resolvedStyle === 'photo') {
+      row.querySelector('.block-photo-caption').value = text || '';
+    } else {
+      row.querySelector('.block-text').value = text || '';
+    }
+    if (image) {
+      const preview = row.querySelector('.block-photo-preview');
+      preview.src = image;
+      preview.classList.add('show');
+    }
+    setRowMode(row, resolvedStyle);
     return row;
   }
 
-  function addBlock(style, text) {
-    contentBlocks.appendChild(createBlockRow(style, text));
+  function addBlock(style, text, image) {
+    contentBlocks.appendChild(createBlockRow(style, text, image));
   }
 
   function resetBlocks() {
@@ -223,18 +258,72 @@
     }
   });
 
+  contentBlocks.addEventListener('change', async (e) => {
+    const row = e.target.closest('.content-block-row');
+    if (!row) return;
+
+    if (e.target.classList.contains('block-style')) {
+      setRowMode(row, e.target.value);
+      handleFormChangeDebounced();
+      return;
+    }
+    if (e.target.classList.contains('block-photo-file')) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const dataUrl = await BlogData.resizeImageToDataUrl(file);
+      const preview = row.querySelector('.block-photo-preview');
+      preview.src = dataUrl;
+      preview.classList.add('show');
+      handleFormChangeDebounced();
+    }
+  });
+
   // Raw = keeps empty blocks too, so an in-progress draft doesn't lose structure.
   function collectBlocksRaw() {
-    return Array.from(contentBlocks.querySelectorAll('.content-block-row')).map((row) => ({
-      style: row.querySelector('.block-style').value,
-      text: row.querySelector('.block-text').value
-    }));
+    return Array.from(contentBlocks.querySelectorAll('.content-block-row')).map((row) => {
+      const style = row.querySelector('.block-style').value;
+      if (style === 'photo') {
+        const preview = row.querySelector('.block-photo-preview');
+        return {
+          style,
+          text: row.querySelector('.block-photo-caption').value,
+          image: preview.classList.contains('show') ? preview.src : ''
+        };
+      }
+      return { style, text: row.querySelector('.block-text').value };
+    });
   }
 
   function collectBlocks() {
     return collectBlocksRaw()
-      .map((b) => ({ style: b.style, text: b.text.trim() }))
-      .filter((b) => b.text !== '');
+      .map((b) => ({ style: b.style, text: (b.text || '').trim(), image: b.image }))
+      .filter((b) => (b.style === 'photo' ? !!b.image : b.text !== ''));
+  }
+
+  // Uploads any pending photo-block files to storage (or promotes a
+  // restored-draft data URL) and returns the final blocks ready to save.
+  async function collectBlocksForPublish() {
+    const rows = Array.from(contentBlocks.querySelectorAll('.content-block-row'));
+    const result = [];
+    for (const row of rows) {
+      const style = row.querySelector('.block-style').value;
+      if (style === 'photo') {
+        const file = row.querySelector('.block-photo-file').files[0];
+        const preview = row.querySelector('.block-photo-preview');
+        const existingSrc = preview.classList.contains('show') ? preview.src : null;
+        if (!file && !existingSrc) continue;
+        const image = file
+          ? await BlogData.uploadImage(file)
+          : (existingSrc.startsWith('data:') ? await BlogData.uploadImageFromDataUrl(existingSrc) : existingSrc);
+        const caption = row.querySelector('.block-photo-caption').value.trim();
+        result.push({ style: 'photo', text: caption, image });
+      } else {
+        const text = row.querySelector('.block-text').value.trim();
+        if (text === '') continue;
+        result.push({ style, text });
+      }
+    }
+    return result;
   }
 
   function restoreBlocks(blocks) {
@@ -243,7 +332,7 @@
       addBlock('paragraph-lg', '');
       return;
     }
-    blocks.forEach((b) => addBlock(b.style, b.text));
+    blocks.forEach((b) => addBlock(b.style, b.text, b.image));
   }
 
   resetBlocks();
@@ -425,13 +514,14 @@
       const image = imageFileInput.files[0]
         ? await BlogData.uploadImage(imageFileInput.files[0])
         : await BlogData.uploadImageFromDataUrl(currentImageDataUrl);
+      const finalContent = await collectBlocksForPublish();
 
       await BlogData.addPost({
         title,
         category,
         image,
         excerpt,
-        content,
+        content: finalContent,
         publishAt: publishAtDate.toISOString()
       });
 

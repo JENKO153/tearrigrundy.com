@@ -31,14 +31,20 @@
     `;
   }
 
-  // Content blocks are objects like { style: 'title'|'subtitle'|'paragraph'|'paragraph-lg'|'paragraph-sm', text }.
+  // Content blocks are objects like
+  // { style: 'title'|'subtitle'|'paragraph'|'paragraph-lg'|'paragraph-sm'|'bullets'|'photo', text, image }.
   // Older posts stored content as plain strings, so those are treated as normal paragraphs.
   function normalizeBlock(block) {
-    if (typeof block === 'string') return { style: 'paragraph', text: block };
-    return { style: block.style || 'paragraph', text: block.text || '' };
+    if (typeof block === 'string') return { style: 'paragraph', text: block, image: '' };
+    return { style: block.style || 'paragraph', text: block.text || '', image: block.image || '' };
   }
 
   function renderBlock(block) {
+    if (block.style === 'photo') {
+      if (!block.image) return '';
+      const caption = block.text ? `<figcaption>${escapeHtml(block.text)}</figcaption>` : '';
+      return `<figure class="post-block-photo"><img src="${escapeHtml(block.image)}" alt="${escapeHtml(block.text || '')}" loading="lazy">${caption}</figure>`;
+    }
     const text = escapeHtml(block.text);
     switch (block.style) {
       case 'title':
@@ -49,6 +55,10 @@
         return `<p class="post-block-lead">${text}</p>`;
       case 'paragraph-sm':
         return `<p class="post-block-sm">${text}</p>`;
+      case 'bullets': {
+        const items = text.split('\n').map((s) => s.trim()).filter(Boolean).map((s) => `<li>${s}</li>`).join('');
+        return items ? `<ul>${items}</ul>` : '';
+      }
       default:
         return `<p>${text}</p>`;
     }
@@ -62,7 +72,8 @@
   function renderPost(post) {
     document.getElementById('pageTitle').textContent = `${post.title} | Tearri Grundy`;
 
-    const blocks = (post.content || []).map(normalizeBlock).filter((b) => b.text.trim() !== '');
+    const blocks = (post.content || []).map(normalizeBlock)
+      .filter((b) => (b.style === 'photo' ? !!b.image : b.text.trim() !== ''));
     const bodyHtml = blocks.map(renderBlock).join('');
     const readingMinutes = estimateReadingMinutes(blocks);
 
