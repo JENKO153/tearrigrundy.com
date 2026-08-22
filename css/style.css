@@ -608,7 +608,6 @@ section { padding: 72px 0; }
 }
 .about-hero img {
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
   aspect-ratio: 3/4;
   object-fit: cover;
   width: 100%;
