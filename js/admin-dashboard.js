@@ -251,13 +251,29 @@
     saveDraftDebounced();
   });
 
+  // ---------- Schedule toggle ----------
+  const scheduleToggle = document.getElementById('scheduleToggle');
+  const schedulePanel = document.getElementById('schedulePanel');
+  const publishAtInput = document.getElementById('publishAt');
+
+  scheduleToggle.addEventListener('change', () => {
+    if (scheduleToggle.checked) {
+      schedulePanel.classList.add('open');
+      if (!publishAtInput.value) publishAtInput.value = nowForInput();
+    } else {
+      schedulePanel.classList.remove('open');
+    }
+    saveDraftDebounced();
+  });
+
   // ---------- Draft autosave ----------
   function saveDraft() {
     const draft = {
       title: document.getElementById('title').value,
       category: document.getElementById('category').value,
       excerpt: document.getElementById('excerpt').value,
-      publishAt: document.getElementById('publishAt').value,
+      scheduled: scheduleToggle.checked,
+      publishAt: publishAtInput.value,
       blocks: collectBlocksRaw(),
       imageDataUrl: currentImageDataUrl
     };
@@ -282,7 +298,9 @@
     document.getElementById('title').value = draft.title || '';
     document.getElementById('category').value = draft.category || '';
     document.getElementById('excerpt').value = draft.excerpt || '';
-    document.getElementById('publishAt').value = draft.publishAt || nowForInput();
+    scheduleToggle.checked = !!draft.scheduled;
+    publishAtInput.value = draft.publishAt || '';
+    schedulePanel.classList.toggle('open', scheduleToggle.checked);
     restoreBlocks(draft.blocks);
     if (draft.imageDataUrl) {
       currentImageDataUrl = draft.imageDataUrl;
@@ -297,7 +315,9 @@
     imagePreview.style.display = 'none';
     imagePreview.src = '';
     resetBlocks();
-    document.getElementById('publishAt').value = nowForInput();
+    scheduleToggle.checked = false;
+    schedulePanel.classList.remove('open');
+    publishAtInput.value = '';
   }
 
   document.getElementById('postForm').addEventListener('input', saveDraftDebounced);
@@ -325,8 +345,9 @@
       return;
     }
 
-    const publishAtValue = document.getElementById('publishAt').value;
-    const publishAtDate = new Date(publishAtValue);
+    const publishAtDate = (scheduleToggle.checked && publishAtInput.value)
+      ? new Date(publishAtInput.value)
+      : new Date();
     const isScheduled = publishAtDate.getTime() > Date.now();
     const actionLabel = isScheduled
       ? `schedule this post for ${formatDateTime(publishAtDate.toISOString())}`
@@ -409,8 +430,6 @@
     if (draft && (draft.title || draft.excerpt || draft.imageDataUrl || (draft.blocks || []).some((b) => b.text))) {
       applyDraft(draft);
       document.getElementById('draftRestored').classList.add('show');
-    } else {
-      document.getElementById('publishAt').value = nowForInput();
     }
 
     resetIdleTimer();

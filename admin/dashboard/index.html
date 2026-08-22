@@ -77,9 +77,15 @@
         </div>
 
         <div class="form-group">
-          <label for="publishAt">Publish Date &amp; Time</label>
-          <input type="datetime-local" id="publishAt" required>
-          <p style="font-size:0.8rem;color:var(--ink-light);margin:6px 0 0;font-weight:400;text-transform:none;letter-spacing:0;">Leave this as now to publish right away, or pick a future date and time to schedule it — it'll go live on its own, right on time.</p>
+          <label class="checkbox-label">
+            <input type="checkbox" id="scheduleToggle">
+            Schedule this for later
+          </label>
+          <div class="schedule-panel" id="schedulePanel">
+            <label for="publishAt">Publish Date &amp; Time</label>
+            <input type="datetime-local" id="publishAt">
+            <p style="font-size:0.8rem;color:var(--ink-light);margin:6px 0 0;font-weight:400;text-transform:none;letter-spacing:0;">Pick a future date and time — it'll go live on its own, right on time.</p>
+          </div>
         </div>
 
         <button type="submit" class="btn btn-full" id="submitBtn">Publish Post</button>
