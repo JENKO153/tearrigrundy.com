@@ -32,6 +32,22 @@
     return new Date(d.getTime() - tzOffsetMs).toISOString().slice(0, 16);
   }
 
+  function estimateReadingMinutes(blocks) {
+    const wordCount = blocks.reduce((total, b) => total + b.text.split(/\s+/).filter(Boolean).length, 0);
+    return Math.max(1, Math.round(wordCount / 200));
+  }
+
+  function renderPreviewBlock(block) {
+    const text = escapeHtml(block.text);
+    switch (block.style) {
+      case 'title': return `<h2>${text}</h2>`;
+      case 'subtitle': return `<h3 class="post-block-subtitle">${text}</h3>`;
+      case 'paragraph-lg': return `<p class="post-block-lead">${text}</p>`;
+      case 'paragraph-sm': return `<p class="post-block-sm">${text}</p>`;
+      default: return `<p>${text}</p>`;
+    }
+  }
+
   function debounce(fn, wait) {
     let t;
     return (...args) => {
@@ -182,7 +198,7 @@
 
   document.getElementById('addBlockBtn').addEventListener('click', () => {
     addBlock('paragraph', '');
-    saveDraftDebounced();
+    handleFormChangeDebounced();
   });
 
   contentBlocks.addEventListener('click', (e) => {
@@ -191,19 +207,19 @@
 
     if (e.target.classList.contains('remove-block')) {
       if (contentBlocks.children.length > 1) row.remove();
-      saveDraftDebounced();
+      handleFormChangeDebounced();
       return;
     }
     if (e.target.classList.contains('move-up')) {
       const prev = row.previousElementSibling;
       if (prev) contentBlocks.insertBefore(row, prev);
-      saveDraftDebounced();
+      handleFormChangeDebounced();
       return;
     }
     if (e.target.classList.contains('move-down')) {
       const next = row.nextElementSibling;
       if (next) contentBlocks.insertBefore(next, row);
-      saveDraftDebounced();
+      handleFormChangeDebounced();
     }
   });
 
@@ -242,13 +258,13 @@
     if (!file) {
       currentImageDataUrl = null;
       imagePreview.style.display = 'none';
-      saveDraftDebounced();
+      handleFormChange();
       return;
     }
     currentImageDataUrl = await BlogData.resizeImageToDataUrl(file);
     imagePreview.src = currentImageDataUrl;
     imagePreview.style.display = '';
-    saveDraftDebounced();
+    handleFormChange();
   });
 
   // ---------- Schedule toggle ----------
@@ -263,8 +279,45 @@
     } else {
       schedulePanel.classList.remove('open');
     }
-    saveDraftDebounced();
+    handleFormChangeDebounced();
   });
+
+  // ---------- Live preview ----------
+  const previewContent = document.getElementById('previewContent');
+
+  function updatePreview() {
+    const title = document.getElementById('title').value.trim();
+    const category = document.getElementById('category').value;
+    const blocks = collectBlocks();
+    const hasImage = !!imageFileInput.files[0] || !!currentImageDataUrl;
+
+    const previewDate = (scheduleToggle.checked && publishAtInput.value)
+      ? new Date(publishAtInput.value)
+      : new Date();
+    const readingMinutes = blocks.length ? estimateReadingMinutes(blocks) : 1;
+
+    const bodyHtml = blocks.length
+      ? blocks.map(renderPreviewBlock).join('')
+      : '<p class="preview-placeholder">Start writing to see your post come together here...</p>';
+
+    const imageHtml = hasImage && currentImageDataUrl
+      ? `<img class="post-hero-img" src="${currentImageDataUrl}" alt="">`
+      : '';
+
+    previewContent.classList.add('fade-swap');
+    requestAnimationFrame(() => {
+      previewContent.innerHTML = `
+        <div class="preview-post-hero">
+          <span class="post-category">${escapeHtml(category || 'Category')}</span>
+          <h1>${escapeHtml(title || 'Your Post Title')}</h1>
+          <div class="post-meta">${formatDate(previewDate.toISOString())} &middot; by Tearri &middot; ${readingMinutes} min read</div>
+        </div>
+        ${imageHtml}
+        <div class="post-body-preview">${bodyHtml}</div>
+      `;
+      requestAnimationFrame(() => previewContent.classList.remove('fade-swap'));
+    });
+  }
 
   // ---------- Draft autosave ----------
   function saveDraft() {
@@ -279,7 +332,11 @@
     };
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
   }
-  const saveDraftDebounced = debounce(saveDraft, 500);
+  function handleFormChange() {
+    saveDraft();
+    updatePreview();
+  }
+  const handleFormChangeDebounced = debounce(handleFormChange, 400);
 
   function loadDraft() {
     try {
@@ -318,10 +375,11 @@
     scheduleToggle.checked = false;
     schedulePanel.classList.remove('open');
     publishAtInput.value = '';
+    updatePreview();
   }
 
-  document.getElementById('postForm').addEventListener('input', saveDraftDebounced);
-  document.getElementById('postForm').addEventListener('change', saveDraftDebounced);
+  document.getElementById('postForm').addEventListener('input', handleFormChangeDebounced);
+  document.getElementById('postForm').addEventListener('change', handleFormChangeDebounced);
 
   document.getElementById('discardDraftBtn').addEventListener('click', () => {
     clearDraft();
@@ -431,6 +489,7 @@
       applyDraft(draft);
       document.getElementById('draftRestored').classList.add('show');
     }
+    updatePreview();
 
     resetIdleTimer();
     renderPostsList();
