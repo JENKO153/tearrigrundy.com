@@ -242,6 +242,16 @@ img { max-width: 100%; display: block; }
   margin-bottom: 14px;
   text-shadow: 0 1px 3px rgba(0,0,0,0.65), 0 2px 14px rgba(0,0,0,0.4);
 }
+/* Same look as .hero-eyebrow but for plain backgrounds — no photo behind it,
+   so no shadow needed (it just reads as blur without one). */
+.eyebrow-plain {
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
 .hero h1 {
   color: var(--white);
   font-size: clamp(2.2rem, 5vw, 3.4rem);
