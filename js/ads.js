@@ -65,9 +65,25 @@ window.AdSlots = (function () {
     document.head.appendChild(s);
   }
 
+  // Stay22 "Let Me Allez": swaps hotel/booking links for earning ones. The script address is fixed;
+  // only the owner's script ID is configurable.
+  let stay22Loaded = false;
+  function loadStay22() {
+    const st = money().stay22 || {};
+    if (PREVIEW || stay22Loaded || !st.linkSwap || !/^[A-Za-z0-9_-]{8,64}$/.test(st.lma || '')) return;
+    stay22Loaded = true;
+    window.Stay22 = window.Stay22 || {};
+    window.Stay22.params = { lmaID: st.lma };
+    const s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://scripts.stay22.com/letmeallez.js';
+    document.head.appendChild(s);
+  }
+
   function refresh() {
     pending.forEach((p) => { if (p.el.isConnected) draw(p.name, p.el); });
     loadTravelpayouts();
+    loadStay22();
   }
 
   function renderSlot(name, el) {
@@ -77,7 +93,7 @@ window.AdSlots = (function () {
   }
 
   document.addEventListener('tg:content', refresh);
-  document.addEventListener('DOMContentLoaded', loadTravelpayouts);
+  document.addEventListener('DOMContentLoaded', () => { loadTravelpayouts(); loadStay22(); });
 
   return { renderSlot, money, refresh };
 })();

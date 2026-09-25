@@ -9,12 +9,12 @@
 
   const DEF = {
     adsense: { enabled: false, client: '', footer: '', inPost: '' },
-    stay22: { enabled: false, aid: '' },
+    stay22: { enabled: false, aid: '', linkSwap: false, lma: '' },
     travelpayouts: { enabled: false, marker: '', script: '' },
     disclosure: '',
   };
   const RE = {
-    client: /^ca-pub-\d{10,20}$/, slot: /^\d{6,20}$/, aid: /^[A-Za-z0-9_-]{2,60}$/, marker: /^\d{3,12}$/, script: /^https:\/\/[^\s"'<>]+$/,
+    client: /^ca-pub-\d{10,20}$/, slot: /^\d{6,20}$/, aid: /^[A-Za-z0-9_-]{2,60}$/, lma: /^[A-Za-z0-9_-]{8,64}$/, marker: /^\d{3,12}$/, script: /^https:\/\/[^\s"'<>]+$/,
   };
   const DEFAULT_DISCLOSURE = 'This post contains affiliate links and maps. If you book through them I may earn a small commission, at no extra cost to you.';
 
@@ -29,7 +29,12 @@
   };
   const status = (m) => ({
     adsense: !m.adsense.enabled ? 'off' : RE.client.test(m.adsense.client) && (RE.slot.test(m.adsense.footer) || RE.slot.test(m.adsense.inPost)) ? 'live' : 'todo',
-    stay22: !m.stay22.enabled ? 'off' : RE.aid.test(m.stay22.aid) ? 'live' : 'todo',
+    stay22: (() => {
+      const s = m.stay22, map = s.enabled, swap = s.linkSwap;
+      if (!map && !swap) return 'off';
+      const mapOk = !map || RE.aid.test(s.aid), swapOk = !swap || RE.lma.test(s.lma);
+      return mapOk && swapOk ? 'live' : 'todo';
+    })(),
     travelpayouts: !m.travelpayouts.enabled ? 'off' : RE.script.test(m.travelpayouts.script) ? 'live' : 'todo',
   });
   A.moneyStatus = (money) => status(merge(money));
@@ -47,15 +52,21 @@
       <div class="a-head"><div><h1 class="a-h1">Earnings</h1><p class="a-lead">Switch on ads and travel affiliate links, and control exactly where they appear. Nothing shows on the site until a service is on and filled in.</p></div></div>
       ${available ? '' : '<div class="a-card" style="border-left:4px solid var(--a-warn)"><h2>One quick set-up step</h2><p class="hint" style="margin:0">Saving needs <code>supabase/01-dashboard.sql</code> to be run once.</p></div>'}
 
-      <div class="a-card"><div class="a-card-top"><h2>Stay22 — hotel maps</h2><span id="chip_stay22"></span></div>
-        <p class="hint">An interactive map of places to stay. Add it to any post with the <b>+ Hotel map</b> block. You earn a commission when a reader books.</p>
-        ${sw('stay22.enabled', 'Turn Stay22 on')}
-        ${field('stay22.aid', 'Your Stay22 ID', 'e.g. tearrigrundy', 'Found in your Stay22 dashboard — it is called your affiliate ID (AID).')}
+      <div class="a-card"><div class="a-card-top"><h2>Stay22 — hotel links &amp; maps</h2><span id="chip_stay22"></span></div>
+        <p class="hint">Two ways to earn from hotel bookings. Use either or both.</p>
+        <h3 class="a-sub">Link swapping (Let Me Allez script)</h3>
+        <p class="hint">Turns links to hotel and booking sites inside your posts into links that earn a commission. It runs on every page.</p>
+        ${sw('stay22.linkSwap', 'Turn link swapping on')}
+        ${field('stay22.lma', 'Your script ID', 'e.g. 6ab6459828c02a2c437e2fef', 'In the code Stay22 gave you it is the long value after <code>lmaID:</code>.')}
+        <h3 class="a-sub">Hotel map block</h3>
+        <p class="hint">An interactive map of places to stay, added to any post with the <b>+ Hotel map</b> block.</p>
+        ${sw('stay22.enabled', 'Turn hotel maps on')}
+        ${field('stay22.aid', 'Your Stay22 affiliate ID', 'e.g. tearrigrundy', 'Found in your Stay22 dashboard (sometimes shown as “AID”). This can be different from the script ID above.')}
         <details class="a-how"><summary>How do I link Stay22?</summary><ol>
-          <li>Go to <b>stay22.com</b> and sign up as a content creator / publisher (free).</li>
-          <li>Add tearrigrundy.com as your website when asked.</li>
-          <li>In your Stay22 dashboard find your <b>affiliate ID</b> (sometimes shown as “AID” or inside the embed code as <code>aid=…</code>) and paste it above.</li>
-          <li>Tick <b>Turn Stay22 on</b> and press Save. Then in any post use <b>+ Hotel map</b> and type a place, e.g. “Kyoto, Japan”.</li></ol></details></div>
+          <li>Sign up at <b>stay22.com</b> as a creator and add tearrigrundy.com.</li>
+          <li><b>Link swapping:</b> in Stay22 go to <b>Create your script</b>, keep the domain as tearrigrundy.com (leave the optional link-format box empty) and create it. In the code they give you, copy the value after <code>lmaID:</code> and paste it into <b>Your script ID</b>. You don't need to add their code anywhere else, the site loads it for you.</li>
+          <li><b>Hotel maps:</b> paste your affiliate ID into the second box, then use <b>+ Hotel map</b> in a post and type a place like “Kyoto, Japan”.</li>
+          <li>Tick what you want on and press Save.</li></ol></details></div>
 
       <div class="a-card"><div class="a-card-top"><h2>Travelpayouts — flights, hotels &amp; more</h2><span id="chip_travelpayouts"></span></div>
         <p class="hint">A travel affiliate network (flights, hotels, car hire…). Their site-wide script turns normal travel links into tracked ones, and their search boxes can go inside posts with <b>+ Travel widget</b>.</p>
@@ -133,6 +144,7 @@
       if (a.footer && !RE.slot.test(a.footer)) return ['adsense.footer', 'Ad unit numbers are digits only.'];
       if (a.inPost && !RE.slot.test(a.inPost)) return ['adsense.inPost', 'Ad unit numbers are digits only.'];
       if (s.aid && !RE.aid.test(s.aid)) return ['stay22.aid', 'The Stay22 ID can only use letters, numbers, - and _.'];
+      if (s.lma && !RE.lma.test(s.lma)) return ['stay22.lma', 'The Stay22 script ID can only use letters, numbers, - and _.'];
       if (t.script && !RE.script.test(t.script)) return ['travelpayouts.script', 'The script link must start with https:// and have no spaces.'];
       if (t.marker && !RE.marker.test(t.marker)) return ['travelpayouts.marker', 'The Travelpayouts ID is a number.'];
       return null;
