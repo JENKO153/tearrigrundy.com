@@ -1,0 +1,37 @@
+# Keeps sitemap.xml up to date with the published posts.
+# Runs every 3 hours (this also picks up posts that were scheduled for a later time),
+# and can be run by hand from the repo's Actions tab ("Run workflow").
+name: Update sitemap
+
+on:
+  schedule:
+    - cron: '17 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sitemap
+  cancel-in-progress: false
+
+jobs:
+  sitemap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rebuild sitemap.xml
+        run: python3 tools/build-sitemap.py
+
+      - name: Commit if it changed
+        run: |
+          if git diff --quiet -- sitemap.xml; then
+            echo "Sitemap unchanged."
+            exit 0
+          fi
+          git config user.name "sitemap-bot"
+          git config user.email "sitemap-bot@users.noreply.github.com"
+          git add sitemap.xml
+          git commit -m "Update sitemap"
+          git push

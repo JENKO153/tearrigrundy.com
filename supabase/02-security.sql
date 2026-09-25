@@ -154,17 +154,22 @@ drop policy if exists "Logged in user can add posts" on public.posts;
 drop policy if exists "Logged in user can edit posts" on public.posts;
 drop policy if exists "Logged in user can delete posts" on public.posts;
 -- Drafts can be saved without re-typing the password; anything touching a live post needs it.
+drop policy if exists posts_insert on public.posts;
 create policy posts_insert on public.posts for insert to authenticated
   with check (public.admin_ok() and (status = 'draft' or public.can_write()));
+drop policy if exists posts_update on public.posts;
 create policy posts_update on public.posts for update to authenticated
   using (public.admin_ok() and (status = 'draft' or public.can_write()))
   with check (public.admin_ok() and (status = 'draft' or public.can_write()));
+drop policy if exists posts_delete on public.posts;
 create policy posts_delete on public.posts for delete to authenticated using (public.can_write());
 
 -- site content
 drop policy if exists "Owner can add site settings" on public.site_settings;
 drop policy if exists "Owner can edit site settings" on public.site_settings;
+drop policy if exists site_settings_insert on public.site_settings;
 create policy site_settings_insert on public.site_settings for insert to authenticated with check (public.can_write());
+drop policy if exists site_settings_update on public.site_settings;
 create policy site_settings_update on public.site_settings for update to authenticated using (public.can_write()) with check (public.can_write());
 
 -- photos: adding needs the admin; removing needs the password check; only sensible file names
@@ -180,7 +185,7 @@ update storage.buckets set file_size_limit = 8388608,
   allowed_mime_types = array['image/webp', 'image/jpeg', 'image/png', 'image/avif']
 where id = 'post-images';
 
--- ---------- Put YOU on the admins list (change the email!) ----------
 insert into public.admins (user_id, email)
-select id, email from auth.users where email in ('CHANGE-ME@example.com')
+select id, email from auth.users
+where email in ('admin.tearrigrundy@gmail.com', 'kurtjenkins@seventhboar.com')
 on conflict (user_id) do nothing;

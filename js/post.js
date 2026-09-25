@@ -25,6 +25,7 @@
   }
 
   function renderNotFound() {
+    if (!PREVIEW) { const m = document.createElement('meta'); m.name = 'robots'; m.content = 'noindex'; document.head.appendChild(m); }
     document.getElementById('postContainer').innerHTML = `
       <div class="container" style="padding:80px 24px;text-align:center;">
         <h1>Post Not Found</h1>
@@ -119,8 +120,38 @@
     return Math.max(1, Math.round(wordCount / 200));
   }
 
+  // Search + social tags for this post (Google runs the page's JavaScript, so it reads these).
+  const SITE = 'https://tearrigrundy.com';
+  function setMeta(id, attr, value) { const el = document.getElementById(id); if (el) el.setAttribute(attr, value); }
+  function applySeo(post) {
+    if (PREVIEW) return;
+    const title = `${post.title} | Tearri Grundy`;
+    const desc = (post.excerpt || '').slice(0, 300);
+    const url = `${SITE}/post/?id=${encodeURIComponent(post.id)}`;
+    const img = /^https:\/\//.test(post.image || '') ? post.image : `${SITE}/images/banner-hero.jpg`;
+    setMeta('seoDesc', 'content', desc);
+    setMeta('seoCanonical', 'href', url);
+    setMeta('ogTitle', 'content', title); setMeta('twTitle', 'content', title);
+    setMeta('ogDesc', 'content', desc); setMeta('twDesc', 'content', desc);
+    setMeta('ogUrl', 'content', url);
+    setMeta('ogImage', 'content', img); setMeta('twImage', 'content', img);
+    const old = document.getElementById('postJsonLd');
+    if (old) old.remove();
+    const ld = document.createElement('script');
+    ld.type = 'application/ld+json';
+    ld.id = 'postJsonLd';
+    ld.textContent = JSON.stringify({
+      '@context': 'https://schema.org', '@type': 'BlogPosting', headline: post.title, description: desc,
+      image: [img], datePublished: post.date, dateModified: post.date, mainEntityOfPage: url,
+      articleSection: post.category, author: { '@type': 'Person', name: post.author || 'Tearri Grundy', url: `${SITE}/about/` },
+      publisher: { '@type': 'Person', name: 'Tearri Grundy' }
+    }).replace(/</g, '\\u003c');
+    document.head.appendChild(ld);
+  }
+
   function renderPost(post) {
     document.getElementById('pageTitle').textContent = `${post.title} | Tearri Grundy`;
+    applySeo(post);
 
     const blocks = (post.content || []).map(normalizeBlock)
       .filter((b) => (b.style === 'photo' ? !!b.image : b.text.trim() !== ''));

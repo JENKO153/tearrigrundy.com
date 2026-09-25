@@ -37,7 +37,7 @@
       } catch (e) { fail(e.message); show('login'); }
       return;
     }
-    fail('That account does not have access to this dashboard.');
+    fail('Your password is right, but this account is not on the dashboard\'s admin list yet. The site owner needs to add it (see SECURITY.md).');
     show('login');
   }
 
