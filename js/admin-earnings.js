@@ -83,50 +83,89 @@
   }
   A.earningsThisMonth = (data) => { const g = buildGrid(data); return g.byCurrency[g.months[0]] || {}; };
 
-  function feedStatus(data) {
-    const feeds = (data.live && data.live.platforms) || {};
-    const err = data.liveError;
-    return PLATFORMS.filter(([p]) => p !== 'adsense').map(([p, label]) => {
-      const f = feeds[p];
-      let state, text;
-      if (err) { state = 'draft'; text = err.status === 404 || !err.status ? 'Live feed not switched on yet' : esc(err.message || 'Live feed unavailable'); }
-      else if (!f || !f.configured) { state = ''; text = 'Not connected'; }
-      else if (!f.ok) { state = 'bad'; text = esc(f.error || 'Could not load'); }
-      else { state = 'live'; text = 'Live'; }
-      return `<li><div class="grow"><div class="t">${label}</div><div class="m">${text}</div></div><span class="a-pill ${state}">${state === 'live' ? 'Live' : state === 'bad' ? 'Problem' : state === 'draft' ? 'Setup needed' : 'Off'}</span></li>`;
-    }).join('');
+  const COLORS = { travelpayouts: '#4a7c74', stay22: '#c96f4a', adsense: '#d6a44b' };
+  const shortMonth = (k) => new Date(`${k}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+  const joinMoney = (byCur) => { const parts = Object.entries(byCur || {}).filter(([, n]) => n > 0).map(([cur, n]) => money(n, cur)); return parts.length ? parts.join(' + ') : ''; };
+
+  function platformState(data, p) {
+    const f = data.live && data.live.platforms && data.live.platforms[p];
+    const hasManual = data.manual.some((r) => r.platform === p);
+    if (p === 'adsense') return hasManual ? { kind: 'manual', pill: 'Typed in', text: '' } : { kind: 'off', pill: 'Type it in', text: 'Add your monthly figure below.' };
+    if (data.liveError) return { kind: 'todo', pill: 'Setup needed', text: 'Live feed not switched on yet.' };
+    if (!f || !f.configured) return hasManual ? { kind: 'manual', pill: 'Typed in', text: '' } : { kind: 'off', pill: 'Not connected', text: '' };
+    if (!f.ok) return { kind: 'bad', pill: 'Problem', text: f.error || 'Could not load.' };
+    return { kind: 'live', pill: 'Live', text: '' };
+  }
+  const pillClass = (k) => (k === 'live' ? 'live' : k === 'bad' ? 'bad' : k === 'todo' ? 'draft' : k === 'manual' ? 'scheduled' : '');
+
+  function chartHtml(g) {
+    const totalsByCur = {};
+    Object.values(g.byCurrency).forEach((c) => Object.entries(c).forEach(([cur, n]) => { totalsByCur[cur] = (totalsByCur[cur] || 0) + n; }));
+    const main = Object.keys(totalsByCur).sort((a, b) => totalsByCur[b] - totalsByCur[a])[0];
+    if (!main) return '<div class="a-empty">No earnings to chart yet.</div>';
+    const cols = g.months.slice().reverse().map((m) => {
+      const segs = PLATFORMS.map(([p, l]) => ({ p, l, v: g.grid[m][p] && g.grid[m][p].currency === main ? g.grid[m][p].amount : 0 }));
+      return { m, segs, total: segs.reduce((a, x) => a + x.v, 0) };
+    });
+    const max = Math.max(...cols.map((c) => c.total), 1);
+    const bars = cols.map((c) => `<div class="e-col"><div class="e-val">${c.total ? Math.round(c.total) : ''}</div>
+      <div class="e-stack" role="img" aria-label="${monthName(c.m)}: ${money(c.total, main)}">${c.segs.filter((x) => x.v > 0).map((x) => `<span style="height:${(x.v / max) * 100}%;background:${COLORS[x.p]}" title="${x.l}: ${money(x.v, main)}"></span>`).join('')}</div>
+      <div class="e-lbl">${shortMonth(c.m)}</div></div>`).join('');
+    const other = Object.keys(totalsByCur).filter((c) => c !== main);
+    return `<div class="e-chart">${bars}</div>
+      <div class="e-legend">${PLATFORMS.map(([p, l]) => `<span><i style="background:${COLORS[p]}"></i>${l}</span>`).join('')}<span class="m">Chart shows ${main}${other.length ? ` only (${other.join(', ')} figures are in the table)` : ''}</span></div>`;
   }
 
-  function tableHtml(data) {
-    const { months, grid, totals, byCurrency } = buildGrid(data);
+  function tableHtml(g) {
     const cell = (c) => (!c ? '<span class="m">—</span>' : `<b>${money(c.amount, c.currency)}</b>${c.pending ? `<div class="m">+ ${money(c.pending, c.currency)} pending</div>` : ''}${c.manual ? '<div class="m">typed in</div>' : ''}`);
-    const combined = (byCur) => { const parts = Object.entries(byCur || {}).map(([cur, n]) => money(n, cur)); return parts.length ? `<b>${parts.join(' + ')}</b>` : '<span class="m">—</span>'; };
-    const yearByCur = {};
-    Object.values(byCurrency).forEach((c) => Object.entries(c).forEach(([cur, n]) => { yearByCur[cur] = (yearByCur[cur] || 0) + n; }));
     return `<div class="a-scroll"><table class="a-table a-earn"><thead><tr><th>Month</th>${PLATFORMS.map(([, l]) => `<th>${l}</th>`).join('')}<th>Total</th></tr></thead><tbody>
-      ${months.map((m) => `<tr><td>${monthName(m)}</td>${PLATFORMS.map(([p]) => `<td>${cell(grid[m][p])}</td>`).join('')}<td>${combined(byCurrency[m])}</td></tr>`).join('')}
-      <tr class="a-earn-total"><td>Last 6 months</td>${PLATFORMS.map(([p]) => `<td>${totals[p] ? `<b>${money(totals[p].amount, totals[p].currency)}</b>${totals[p].pending ? `<div class="m">+ ${money(totals[p].pending, totals[p].currency)} pending</div>` : ''}` : '<span class="m">—</span>'}</td>`).join('')}<td>${combined(yearByCur)}</td></tr>
+      ${g.months.map((m) => `<tr><td>${monthName(m)}</td>${PLATFORMS.map(([p]) => `<td>${cell(g.grid[m][p])}</td>`).join('')}<td>${joinMoney(g.byCurrency[m]) ? `<b>${joinMoney(g.byCurrency[m])}</b>` : '<span class="m">—</span>'}</td>`).join('')}
       </tbody></table></div>`;
   }
 
   async function paintEarnings(box, force) {
-    box.innerHTML = '<p class="hint">Loading earnings…</p>';
+    box.innerHTML = '<p class="hint" style="padding:30px 0;text-align:center">Loading your earnings…</p>';
     let data;
-    try { data = await A.getEarnings(force); } catch (e) { box.innerHTML = `<p class="hint">Could not load earnings: ${esc(e.message)}</p>`; return; }
-    const updated = data.live && data.live.updated ? `Live figures updated ${A.ago(data.live.updated)}.` : 'Live figures are not connected yet.';
-    box.innerHTML = `<div class="a-card-top"><h2>Earnings</h2><button class="a-btn ghost sm" id="earnRefresh" type="button">Refresh</button></div>
-      <p class="hint">Confirmed earnings by month. “Pending” is booked but not paid out yet. ${updated}</p>
-      ${tableHtml(data)}
-      <h3 class="a-sub">Where the numbers come from</h3><ul class="a-list">${feedStatus(data)}<li><div class="grow"><div class="t">Google AdSense</div><div class="m">Typed in by hand below (Google needs a separate sign-in setup for a live feed).</div></div><span class="a-pill">Manual</span></li></ul>
-      <details class="a-how"><summary>Set up the live feeds (Travelpayouts &amp; Stay22)</summary><ol>
-        <li>Run <code>supabase/02-security.sql</code> and <code>supabase/03-earnings.sql</code> in the Supabase SQL Editor (if you haven't).</li>
-        <li><b>Travelpayouts:</b> in your account go to <b>Profile → API token</b> and copy the token.</li>
-        <li><b>Stay22:</b> in the Stay22 Hub go to <b>Settings → Hub Data Reporting API</b>, name a token, press <b>Generate</b> and copy it (it is only shown once). A new token becomes active after its first successful use, so the first refresh may take a moment.</li>
-        <li>In a terminal, in the website's folder (needs the Supabase command-line tool):<pre class="a-code-block">supabase login
-supabase link --project-ref cbadidkhyepefebjnvsl
-supabase secrets set TRAVELPAYOUTS_TOKEN=paste-token-here STAY22_API_KEY=paste-key-here
-supabase functions deploy earnings</pre></li>
-        <li>Press <b>Refresh</b> above. The tokens stay inside Supabase; they are never on the website.</li></ol></details>`;
+    try { data = await A.getEarnings(force); } catch (e) { box.innerHTML = `<div class="a-card"><p class="hint">Could not load earnings: ${esc(e.message)}</p></div>`; return; }
+    const g = buildGrid(data), now = g.months[0], prev = g.months[1];
+    const cur = g.byCurrency[now] || {};
+    const pend = {};
+    PLATFORMS.forEach(([p]) => { const c = g.grid[now][p]; if (c && c.pending) pend[c.currency] = (pend[c.currency] || 0) + c.pending; });
+    let delta = '';
+    const curKeys = Object.keys(cur);
+    if (curKeys.length === 1) {
+      const c = curKeys[0], before = (g.byCurrency[prev] || {})[c];
+      if (before > 0) { const pct = Math.round(((cur[c] - before) / before) * 100); delta = `<span class="e-delta ${pct >= 0 ? 'up' : 'down'}">${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct)}% vs ${monthName(prev).split(' ')[0]}</span>`; }
+    }
+    const updated = data.live && data.live.updated ? `Live figures updated ${A.ago(data.live.updated)}` : 'Live figures not connected yet';
+    const cards = PLATFORMS.map(([p, label]) => {
+      const c = g.grid[now][p], t = g.totals[p], st = platformState(data, p);
+      return `<div class="e-card" style="--c:${COLORS[p]}">
+        <div class="e-card-top"><span class="e-name"><i></i>${label}</span><span class="a-pill ${pillClass(st.kind)}">${st.pill}</span></div>
+        <div class="e-amt">${c ? money(c.amount, c.currency) : '—'}</div>
+        <div class="e-note">${c && c.pending ? `+ ${money(c.pending, c.currency)} pending` : 'this month'}</div>
+        <div class="e-six">${t ? `${money(t.amount, t.currency)} over 6 months` : 'No figures yet'}</div>
+        ${st.text ? `<div class="${st.kind === 'bad' || st.kind === 'todo' ? 'e-warn' : 'e-hint'}">${esc(st.text)}</div>` : ''}
+        ${st.kind === 'live' || st.kind === 'manual' || p === 'adsense' ? '' : '<button type="button" class="e-link" data-goto="conn">Connect →</button>'}
+      </div>`;
+    }).join('');
+    box.innerHTML = `
+      <div class="e-hero"><div>
+          <div class="e-eyebrow">Earned in ${monthName(now)}</div>
+          <div class="e-big">${joinMoney(cur) || '<span class="e-none">Nothing yet</span>'}</div>
+          <div class="e-sub">${joinMoney(pend) ? `+ ${joinMoney(pend)} pending · ` : ''}${delta}${!joinMoney(cur) ? 'Connect an account or type in a figure to get started.' : ''}</div>
+        </div>
+        <div class="e-hero-side"><button class="a-btn ghost sm" id="earnRefresh" type="button">↻ Refresh</button><div class="e-updated">${updated}</div></div></div>
+      <div class="e-cards">${cards}</div>
+      <div class="a-card"><h2>Last 6 months</h2><p class="hint">Confirmed earnings each month. Hover a bar for the detail.</p>${chartHtml(g)}</div>
+      <div class="a-card"><h2>Month by month</h2><p class="hint">“Pending” is booked but not paid out yet.</p>${tableHtml(g)}</div>
+      <details class="a-how e-setup"><summary>Set up the live feeds (Travelpayouts &amp; Stay22)</summary><ol>
+        <li>Run the database scripts in <code>supabase/00-run-everything.sql</code> once in the Supabase SQL Editor.</li>
+        <li><b>Travelpayouts:</b> Profile → API token → copy the token.</li>
+        <li><b>Stay22:</b> Stay22 Hub → Settings → Hub Data Reporting API → Generate → copy (shown once).</li>
+        <li>In a terminal, from the website's folder:<pre class="a-code-block">supabase secrets set TRAVELPAYOUTS_TOKEN=paste-here STAY22_API_KEY=paste-here --project-ref cbadidkhyepefebjnvsl
+supabase functions deploy earnings --project-ref cbadidkhyepefebjnvsl --use-api</pre></li>
+        <li>Press <b>Refresh</b>. The tokens stay inside Supabase, never on the website.</li></ol></details>`;
     $('earnRefresh').onclick = () => paintEarnings(box, true);
     manualCard(data);
   }
@@ -135,17 +174,17 @@ supabase functions deploy earnings</pre></li>
     const holder = $('earnManual');
     if (!holder) return;
     if (!data.manualAvailable) {
-      holder.innerHTML = '<h2>Type in a figure</h2><p class="hint" style="margin:0">Run <code>supabase/03-earnings.sql</code> once to switch this on.</p>';
+      holder.innerHTML = '<p class="hint">To type figures in by hand, run <code>supabase/00-run-everything.sql</code> once in the Supabase SQL Editor.</p>';
       return;
     }
     const thisMonth = lastMonths(1)[0];
-    holder.innerHTML = `<h2>Type in a figure</h2><p class="hint">For AdSense (or to correct a month). A figure you type replaces the live number for that platform and month.</p>
+    holder.innerHTML = `<details class="e-details"><summary>＋ Type in a figure by hand</summary><p class="hint">For AdSense, or to correct a month. A figure you type replaces the live number for that platform and month.</p>
       <div class="a-two"><div class="a-field"><label for="mPlat">Platform</label><select id="mPlat">${PLATFORMS.map(([p, l]) => `<option value="${p}" ${p === 'adsense' ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="a-field"><label for="mMonth">Month</label><input type="month" id="mMonth" value="${thisMonth}" max="${thisMonth}"></div></div>
       <div class="a-two"><div class="a-field"><label for="mAmount">Amount earned</label><input id="mAmount" inputmode="decimal" placeholder="e.g. 42.50" autocomplete="off"></div>
         <div class="a-field"><label for="mCur">Currency</label><input id="mCur" value="AUD" maxlength="3" autocomplete="off"></div></div>
       <button class="a-btn sm" id="mSave" type="button">Save figure</button>
-      ${data.manual.length ? `<ul class="a-list" style="margin-top:14px">${data.manual.slice(0, 12).map((r) => `<li><div class="grow"><div class="t">${PLATFORMS.find(([p]) => p === r.platform)?.[1] || esc(r.platform)} · ${monthName(r.month)}</div><div class="m">${money(r.amount, r.currency)}</div></div><button class="a-icon danger" data-mdel="${esc(r.month)}|${esc(r.platform)}">Remove</button></li>`).join('')}</ul>` : ''}`;
+      ${data.manual.length ? `<ul class="a-list" style="margin-top:14px">${data.manual.slice(0, 12).map((r) => `<li><div class="grow"><div class="t">${PLATFORMS.find(([p]) => p === r.platform)?.[1] || esc(r.platform)} · ${monthName(r.month)}</div><div class="m">${money(r.amount, r.currency)}</div></div><button class="a-icon danger" data-mdel="${esc(r.month)}|${esc(r.platform)}">Remove</button></li>`).join('')}</ul>` : ''}</details>`;
     $('mSave').onclick = async () => {
       const amount = Number(String($('mAmount').value).replace(/[, ]/g, ''));
       const cur = $('mCur').value.trim().toUpperCase();
@@ -178,10 +217,14 @@ supabase functions deploy earnings</pre></li>
     const field = (path, label, ph, hint, extra = '') => `<div class="a-field"><label for="e_${path.replace('.', '_')}">${label}</label><input id="e_${path.replace('.', '_')}" data-path="${path}" placeholder="${esc(ph)}" autocomplete="off" spellcheck="false" ${extra}>${hint ? `<p class="hint">${hint}</p>` : ''}</div>`;
 
     root.innerHTML = `<div class="a-view">
-      <div class="a-head"><div><h1 class="a-h1">Earnings</h1><p class="a-lead">Switch on ads and travel affiliate links, and control exactly where they appear. Nothing shows on the site until a service is on and filled in.</p></div></div>
-      ${available ? '' : '<div class="a-card" style="border-left:4px solid var(--a-warn)"><h2>One quick set-up step</h2><p class="hint" style="margin:0">Saving needs <code>supabase/01-dashboard.sql</code> to be run once.</p></div>'}
-      <div class="a-card" id="earnTable"></div>
-      <div class="a-card" id="earnManual"></div>
+      <div class="a-head"><div><h1 class="a-h1">Earnings</h1><p class="a-lead">Your travel and ad income in one place.</p></div>
+        <div class="a-tabs" id="earnTabs"><button type="button" class="a-tab on" data-tab="earn">Earnings</button><button type="button" class="a-tab" data-tab="conn">Connections</button></div></div>
+
+      <div id="tabEarn"><div id="earnTable"></div><div class="a-card" id="earnManual"></div></div>
+
+      <div id="tabConn" class="hidden">
+      <p class="a-lead" style="margin-bottom:18px">Connect your accounts and choose what shows on the site. Nothing appears until a service is switched on and filled in.</p>
+      ${available ? '' : '<div class="a-card" style="border-left:4px solid var(--a-warn)"><h2>One quick set-up step</h2><p class="hint" style="margin:0">Saving needs <code>supabase/00-run-everything.sql</code> to be run once.</p></div>'}
 
       <div class="a-card"><div class="a-card-top"><h2>Stay22 — hotel links &amp; maps</h2><span id="chip_stay22"></span></div>
         <p class="hint">Two ways to earn from hotel bookings. Use either or both.</p>
@@ -231,8 +274,21 @@ supabase functions deploy earnings</pre></li>
 
       <div class="a-card"><h2>Affiliate disclosure</h2><p class="hint">Shown at the bottom of any post that has a hotel map or travel widget. Most countries require this.</p>
         <div class="a-field" style="margin:0"><textarea data-path="disclosure" rows="3" maxlength="300" placeholder="${esc(DEFAULT_DISCLOSURE)}" aria-label="Disclosure text"></textarea><p class="hint">Leave blank to use the wording above.</p></div></div>
+      </div>
     </div>`;
 
+    let tab = 'earn';
+    function showTab(t) {
+      tab = t;
+      $('tabEarn').classList.toggle('hidden', t !== 'earn');
+      $('tabConn').classList.toggle('hidden', t !== 'conn');
+      $('earnTabs').querySelectorAll('.a-tab').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
+      bar();
+      window.scrollTo(0, 0);
+    }
+    $('earnTabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) showTab(b.dataset.tab); });
+    root.addEventListener('click', (e) => { if (e.target.closest('[data-goto]')) showTab('conn'); });
+    if (arg === 'connections') tab = 'conn';
     paintEarnings($('earnTable'), false);
 
     /* ---------- bind form <-> state ---------- */
@@ -269,7 +325,7 @@ supabase functions deploy earnings</pre></li>
     function bar(msg) {
       const el = $('savebar');
       el.innerHTML = `<span class="status ${msg ? 'ok' : A.dirty ? 'dirty' : ''}">${msg || (A.dirty ? '● Unsaved changes' : 'No changes yet')}</span><button class="a-btn" id="eSave" type="button" ${A.dirty ? '' : 'disabled'}>Save earnings settings</button>`;
-      el.classList.add('on');
+      el.classList.toggle('on', tab === 'conn');
     }
     function problem() {
       const a = m.adsense, s = m.stay22, t = m.travelpayouts;
@@ -301,7 +357,7 @@ supabase functions deploy earnings</pre></li>
         A.toast('Earnings settings saved', 'ok');
       } catch (ex) { A.toast(ex.message, 'bad'); bar(); }
     };
-    bar();
+    if (tab === 'conn') showTab('conn'); else bar();
     return function cleanup() { $('savebar').onclick = null; void touched; };
   };
 
