@@ -10,6 +10,8 @@
   }
   document.getElementById('year').textContent = new Date().getFullYear();
 
+  window.AdSlots.renderSlot('footer-banner', document.getElementById('adSlotFooter'));
+
   const grid = document.getElementById('postsGrid');
   const filterTagsContainer = document.getElementById('filterTags');
   const searchInput = document.getElementById('searchInput');

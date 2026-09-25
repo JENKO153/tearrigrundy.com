@@ -4,7 +4,9 @@
    ScrollReveal.observe(el) right after rendering that content, since it
    won't exist yet for the initial DOMContentLoaded scan. */
 window.ScrollReveal = (function () {
-  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // In the admin's live preview everything just shows, so edits appear instantly.
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    || new URLSearchParams(window.location.search).get('preview') === '1';
 
   const observer = prefersReduced ? null : new IntersectionObserver((entries) => {
     entries.forEach((entry) => {

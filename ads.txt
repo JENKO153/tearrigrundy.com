@@ -1,0 +1,4 @@
+# Required by Google AdSense once the account is approved.
+# Replace the line below with the exact one shown in your AdSense
+# dashboard under Sites > tearrigrundy.com > "Get code" — it will look like:
+# google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0

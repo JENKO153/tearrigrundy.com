@@ -1,5 +1,8 @@
-/* Single post page: reads ?id= from the URL, renders the post and related posts. */
+/* Single post page: reads ?id= from the URL, renders the post and related posts.
+   With ?preview=1 (the admin's live preview) it instead renders whatever draft the
+   editor sends it, using this exact same page and styling. */
 (function () {
+  const PREVIEW = new URLSearchParams(window.location.search).get('preview') === '1';
   const navToggle = document.getElementById('navToggle');
   const navLinks = document.getElementById('navLinks');
   if (navToggle && navLinks) {
@@ -36,10 +39,57 @@
   // Older posts stored content as plain strings, so those are treated as normal paragraphs.
   function normalizeBlock(block) {
     if (typeof block === 'string') return { style: 'paragraph', text: block, image: '' };
-    return { style: block.style || 'paragraph', text: block.text || '', image: block.image || '' };
+    return { style: block.style || 'paragraph', text: block.text || '', image: block.image || '', caption: block.caption || '' };
   }
 
+  // Affiliate embeds. They render as placeholders and are filled in by hydrateEmbeds() once the
+  // Earnings settings are known (Stay22 hotel map, Travelpayouts widget).
+  const DEFAULT_DISCLOSURE = 'This post contains affiliate links and maps. If you book through them I may earn a small commission, at no extra cost to you.';
+  const embedSettings = () => (window.AdSlots && window.AdSlots.money()) || {};
+
+  function hydrateEmbeds() {
+    const money = embedSettings();
+    const stay = money.stay22 || {}, tp = money.travelpayouts || {};
+    let shown = 0;
+    document.querySelectorAll('.post-embed').forEach((el) => {
+      const kind = el.dataset.kind, value = el.dataset.value || '';
+      if (kind === 'map') {
+        const ok = stay.enabled && /^[A-Za-z0-9_-]{2,60}$/.test(stay.aid || '') && value.trim();
+        if (!ok) { el.innerHTML = PREVIEW && value.trim() ? '<div class="post-embed-note">The hotel map appears here once Stay22 is switched on under Earnings.</div>' : ''; el.style.display = PREVIEW && value.trim() ? '' : 'none'; return; }
+        if (el.dataset.done === `${stay.aid}|${value}`) { shown++; return; }
+        el.dataset.done = `${stay.aid}|${value}`;
+        el.style.display = '';
+        const url = `https://www.stay22.com/embed/gm?aid=${encodeURIComponent(stay.aid)}&address=${encodeURIComponent(value)}&maincolor=4a7c74`;
+        const label = el.dataset.caption || `Where to stay: ${value}`;
+        el.innerHTML = `<h3 class="post-embed-title">${escapeHtml(label)}</h3><iframe class="post-embed-map" src="${escapeHtml(url)}" title="${escapeHtml(label)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
+        shown++;
+      } else if (kind === 'widget') {
+        const ok = tp.enabled && /^https:\/\/[^\s"'<>]+$/.test(value);
+        if (!ok || PREVIEW) { el.innerHTML = PREVIEW && /^https:\/\//.test(value) ? '<div class="post-embed-note">Your Travelpayouts widget shows here on the live site.</div>' : ''; el.style.display = PREVIEW && /^https:\/\//.test(value) ? '' : 'none'; return; }
+        if (el.dataset.done === value) { shown++; return; }
+        el.dataset.done = value;
+        el.style.display = '';
+        el.innerHTML = '';
+        const s = document.createElement('script');
+        s.async = true; s.charset = 'utf-8'; s.src = value;
+        el.appendChild(s);
+        shown++;
+      }
+    });
+    const note = document.getElementById('postDisclosure');
+    if (note) {
+      const text = (money.disclosure || '').trim() || DEFAULT_DISCLOSURE;
+      note.textContent = text;
+      note.style.display = shown || (PREVIEW && document.querySelector('.post-embed[data-value]:not([data-value=""])')) ? '' : 'none';
+    }
+  }
+  document.addEventListener('tg:content', hydrateEmbeds);
+
   function renderBlock(block) {
+    if (block.style === 'map' || block.style === 'widget') {
+      if (!block.text.trim()) return '';
+      return `<div class="post-embed" data-kind="${block.style}" data-value="${escapeHtml(block.text.trim())}" data-caption="${escapeHtml(block.caption || '')}" style="display:none"></div>`;
+    }
     if (block.style === 'photo') {
       if (!block.image) return '';
       const caption = block.text ? `<figcaption>${escapeHtml(block.text)}</figcaption>` : '';
@@ -65,7 +115,7 @@
   }
 
   function estimateReadingMinutes(blocks) {
-    const wordCount = blocks.reduce((total, b) => total + b.text.split(/\s+/).filter(Boolean).length, 0);
+    const wordCount = blocks.filter((b) => b.style !== 'map' && b.style !== 'widget').reduce((total, b) => total + b.text.split(/\s+/).filter(Boolean).length, 0);
     return Math.max(1, Math.round(wordCount / 200));
   }
 
@@ -74,8 +124,13 @@
 
     const blocks = (post.content || []).map(normalizeBlock)
       .filter((b) => (b.style === 'photo' ? !!b.image : b.text.trim() !== ''));
-    const bodyHtml = blocks.map(renderBlock).join('');
     const readingMinutes = estimateReadingMinutes(blocks);
+
+    // Ad slot sits after the first block — a fixed, predictable spot
+    // regardless of how the rest of the post is structured.
+    const firstBlockHtml = blocks.length ? renderBlock(blocks[0]) : '';
+    const restBlocksHtml = blocks.slice(1).map(renderBlock).join('');
+    const bodyHtml = `${firstBlockHtml}<div class="ad-slot" id="adSlotInPost" style="display:none;"></div>${restBlocksHtml}`;
 
     const postContainer = document.getElementById('postContainer');
     postContainer.innerHTML = `
@@ -88,9 +143,10 @@
           </div>
         </div>
         <div class="container">
-          <img class="post-hero-img" src="${escapeHtml(post.image)}" alt="${escapeHtml(post.title)}">
+          ${post.image ? `<img class="post-hero-img" src="${escapeHtml(post.image)}" alt="${escapeHtml(post.title)}">` : ''}
           <div class="post-body">
             ${bodyHtml}
+            <p class="post-disclosure" id="postDisclosure" style="display:none"></p>
             <div class="post-body-footer">
               <a class="btn btn-outline" href="/blog/">&larr; Back to All Posts</a>
             </div>
@@ -99,6 +155,8 @@
       </div>
     `;
     window.ScrollReveal.observe(postContainer.querySelector('.reveal'));
+    window.AdSlots.renderSlot('in-post', document.getElementById('adSlotInPost'));
+    hydrateEmbeds();
   }
 
   function renderRelated(post, allPosts) {
@@ -126,8 +184,21 @@
     window.ScrollReveal.observe(relatedGrid);
   }
 
+  if (PREVIEW) {
+    document.getElementById('postContainer').innerHTML = '<div class="container" style="padding:80px 24px;text-align:center;color:var(--ink-light);">Your post appears here as you write it…</div>';
+    window.addEventListener('message', (e) => {
+      if (e.origin !== window.location.origin || e.source !== window.parent) return;
+      if (e.data && e.data.type === 'tg:preview' && e.data.post) {
+        if (e.data.money && window.SiteContent) window.SiteContent.settings = Object.assign({}, window.SiteContent.settings, { money: e.data.money });
+        renderPost(e.data.post);
+      }
+    });
+    return;
+  }
+
   (async function init() {
     document.getElementById('postContainer').innerHTML = '<div class="container" style="padding:80px 24px;text-align:center;color:var(--ink-light);">Loading...</div>';
+    window.AdSlots.renderSlot('footer-banner', document.getElementById('adSlotFooter'));
 
     const params = new URLSearchParams(window.location.search);
     const id = params.get('id');

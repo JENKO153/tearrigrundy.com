@@ -26,12 +26,12 @@
 </header>
 
 <section class="blog-hero">
-  <div class="blog-hero-bg" style="background-image:url('/images/blog-banner.jpg')"></div>
+  <div class="blog-hero-bg" data-cms-bg="blog.banner" style="background-image:url('/images/blog-banner.jpg')"></div>
   <div class="blog-hero-scrim"></div>
   <div class="blog-hero-content">
-    <span class="hero-eyebrow">All Stories</span>
-    <h1>The Blog</h1>
-    <p>Every post, sorted newest first. Filter by category or search for a place, dish, or trip type.</p>
+    <span class="hero-eyebrow" data-cms="blog.eyebrow">All Stories</span>
+    <h1 data-cms="blog.title">The Blog</h1>
+    <p data-cms="blog.subtitle">Every post, sorted newest first. Filter by category or search for a place, dish, or trip type.</p>
   </div>
 </section>
 
@@ -51,11 +51,13 @@
   </div>
 </section>
 
+<div class="ad-slot" id="adSlotFooter" style="display:none;"></div>
+
 <footer class="site-footer">
   <div class="container footer-inner">
     <div>
       <div class="footer-logo">Tearri Grundy</div>
-      <p style="max-width:280px;color:var(--ink-light);font-size:0.9rem;">Travel stories, food finds, and honest guides from wherever the passport gets stamped next.</p>
+      <p data-cms="footer.tagline" style="max-width:280px;color:var(--ink-light);font-size:0.9rem;">Travel stories, food finds, and honest guides from wherever the passport gets stamped next.</p>
     </div>
     <ul class="footer-links">
       <li><a href="/">Home</a></li>
@@ -66,9 +68,12 @@
   <div class="footer-bottom">&copy; <span id="year"></span> Tearri Grundy. All rights reserved.</div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/config.js"></script>
+<script src="/js/vendor/supabase-2.116.0.js"></script>
 <script src="/js/data.js"></script>
+<script src="/js/site-content.js"></script>
 <script src="/js/reveal.js"></script>
+<script src="/js/ads.js"></script>
 <script src="/js/blog.js"></script>
 </body>
 </html>

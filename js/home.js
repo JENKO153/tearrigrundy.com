@@ -11,6 +11,8 @@
 
   document.getElementById('year').textContent = new Date().getFullYear();
 
+  window.AdSlots.renderSlot('footer-banner', document.getElementById('adSlotFooter'));
+
   // Subtle parallax on the hero photo as the page scrolls.
   const heroBg = document.querySelector('.hero-bg');
   if (heroBg && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {

@@ -10,6 +10,8 @@
   }
   document.getElementById('year').textContent = new Date().getFullYear();
 
+  window.AdSlots.renderSlot('footer-banner', document.getElementById('adSlotFooter'));
+
   // Live day counter: counts up from the day the blog launched, and keeps
   // itself correct if the page is left open past midnight.
   const LAUNCH_DATE = new Date('2026-08-21T00:00:00');

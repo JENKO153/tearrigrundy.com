@@ -1,20 +1,21 @@
 /*
- * Shared post storage + auth for the blog, backed by Supabase.
- * The anon key below is safe to expose client-side — row-level security
- * policies on the `posts` table (and storage bucket) are what actually
- * gate writes to logged-in users. Loaded before every page-specific script.
+ * Public data layer: what any visitor can read, straight from Supabase.
+ *
+ * This client never logs in and never stores a session, so the public pages show
+ * exactly what a visitor sees (no drafts, nothing scheduled) even while the owner
+ * is signed in to the admin in the same browser. Row-level security decides what
+ * the anonymous key may read; nothing here can write. The admin has its own
+ * client in cms.js.
  */
 (function (window) {
-  const SUPABASE_URL = 'https://cbadidkhyepefebjnvsl.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNiYWRpZGtoeWVwZWZlYmpudnNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMDE2NjAsImV4cCI6MjEwMjg3NzY2MH0.P_qjeExCaflk4hhP7JT-8PnRCD7HJU8bKvXRFV2nAdw';
+  const cfg = window.TG_CONFIG;
+  const configured = !String(cfg.supabaseUrl).startsWith('YOUR_') && !String(cfg.supabaseKey).startsWith('YOUR_');
 
-  // Session is kept in sessionStorage (not the default localStorage) so
-  // logging in only lasts for that browser tab/session — closing the
-  // browser logs her out automatically instead of staying signed in
-  // indefinitely on that device.
-  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { storage: window.sessionStorage }
-  });
+  const client = configured && window.supabase
+    ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+      })
+    : null;
 
   function rowToPost(row) {
     return {
@@ -29,12 +30,8 @@
     };
   }
 
-  function slugify(title) {
-    const base = title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    return `${base}-${Date.now().toString(36)}`;
-  }
-
   async function getPosts() {
+    if (!client) return [];
     const { data, error } = await client
       .from('posts')
       .select('*')
@@ -47,6 +44,7 @@
   }
 
   async function getPostById(slug) {
+    if (!client) return null;
     const { data, error } = await client
       .from('posts')
       .select('*')
@@ -61,119 +59,16 @@
     return Array.from(new Set(posts.map((p) => p.category))).sort();
   }
 
-  async function addPost(post) {
-    const row = {
-      slug: slugify(post.title || 'post'),
-      title: post.title,
-      category: post.category,
-      excerpt: post.excerpt,
-      image_url: post.image,
-      content: post.content,
-      author: post.author || 'Tearri',
-      published_at: post.publishAt || new Date().toISOString()
-    };
-    const { data, error } = await client.from('posts').insert(row).select().single();
-    if (error) throw error;
-    return rowToPost(data);
+  // Editable wording/photos (Admin -> Homepage & About). Empty until the owner saves something.
+  async function getSettings() {
+    if (!client) return {};
+    try {
+      const { data, error } = await client.from('site_settings').select('data').eq('id', 1).maybeSingle();
+      return error || !data ? {} : (data.data || {});
+    } catch (e) {
+      return {};
+    }
   }
 
-  async function deletePost(slug) {
-    const { error } = await client.from('posts').delete().eq('slug', slug);
-    if (error) throw error;
-  }
-
-  // Shrinks an uploaded image to a max dimension and returns it as a <canvas>.
-  function scaleImageToCanvas(file, maxDim = 1600) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = () => reject(reader.error);
-      reader.onload = () => {
-        const img = new Image();
-        img.onerror = () => reject(new Error('Could not read that image file.'));
-        img.onload = () => {
-          const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-          const canvas = document.createElement('canvas');
-          canvas.width = Math.round(img.width * scale);
-          canvas.height = Math.round(img.height * scale);
-          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-          resolve(canvas);
-        };
-        img.src = reader.result;
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  async function resizeImage(file, maxDim = 1600, quality = 0.82) {
-    const canvas = await scaleImageToCanvas(file, maxDim);
-    return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
-  }
-
-  // Used for the draft-autosave preview, since a resized data URL (unlike a
-  // File/Blob) can actually survive being written to localStorage.
-  async function resizeImageToDataUrl(file, maxDim = 1600, quality = 0.82) {
-    const canvas = await scaleImageToCanvas(file, maxDim);
-    return canvas.toDataURL('image/jpeg', quality);
-  }
-
-  function dataUrlToBlob(dataUrl) {
-    const [header, base64] = dataUrl.split(',');
-    const mime = header.match(/:(.*?);/)[1];
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return new Blob([bytes], { type: mime });
-  }
-
-  async function uploadBlob(blob) {
-    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
-    const { error } = await client.storage.from('post-images').upload(path, blob, {
-      contentType: 'image/jpeg'
-    });
-    if (error) throw error;
-    const { data } = client.storage.from('post-images').getPublicUrl(path);
-    return data.publicUrl;
-  }
-
-  async function uploadImage(file) {
-    const blob = await resizeImage(file);
-    return uploadBlob(blob);
-  }
-
-  // For publishing a restored draft whose cover photo only survived as a
-  // data URL (the original File object can't be persisted to localStorage).
-  async function uploadImageFromDataUrl(dataUrl) {
-    return uploadBlob(dataUrlToBlob(dataUrl));
-  }
-
-  async function login(email, password) {
-    const { error } = await client.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-  }
-
-  async function logout() {
-    await client.auth.signOut();
-  }
-
-  async function getSession() {
-    const { data } = await client.auth.getSession();
-    return data.session;
-  }
-
-  window.BlogData = {
-    getPosts,
-    getPostById,
-    getCategories,
-    addPost,
-    deletePost,
-    uploadImage,
-    uploadImageFromDataUrl,
-    resizeImageToDataUrl
-  };
-
-  window.BlogAuth = {
-    login,
-    logout,
-    getSession
-  };
+  window.BlogData = { getPosts, getPostById, getCategories, getSettings };
 })(window);

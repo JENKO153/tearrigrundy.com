@@ -4,38 +4,55 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://cbadidkhyepefebjnvsl.supabase.co; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'">
 <title>Admin Login | Tearri Grundy</title>
 <link rel="icon" type="image/png" href="/images/favicon.png">
 <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
 <link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/admin.css">
+<script src="/js/admin-guard.js"></script>
 </head>
-<body>
+<body class="admin">
+<main class="a-auth">
+  <div class="a-auth-card">
+    <h1 id="loginTitle">Welcome Back, Tearri</h1>
+    <p class="sub" id="loginSub">Sign in to write and manage your blog.</p>
+    <div class="a-err" id="loginError" role="alert"></div>
 
-<div class="auth-wrap">
-  <div class="auth-card">
-    <h1>Welcome Back, Tearri</h1>
-    <p style="color:var(--ink-light);margin-bottom:24px;">Sign in to write a new post.</p>
-
-    <div class="form-error" id="formError">Incorrect email or password. Try again.</div>
-
-    <form id="loginForm">
-      <div class="form-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" required autocomplete="username">
-      </div>
-      <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" required autocomplete="current-password">
-      </div>
-      <button type="submit" class="btn btn-full">Log In</button>
+    <!-- Step 1: email + password -->
+    <form class="a-step on" id="stepLogin" autocomplete="on">
+      <div class="a-note hidden" id="demoNote"></div>
+      <div class="a-field"><label for="email">Email</label><input type="email" id="email" required autocomplete="username"></div>
+      <div class="a-field"><label for="password">Password</label><input type="password" id="password" required autocomplete="current-password"></div>
+      <div id="captchaBox" class="a-field hidden"></div>
+      <button class="a-btn full" type="submit">Log in</button>
     </form>
 
-    <p style="margin-top:24px;"><a href="/" style="font-size:0.85rem;color:var(--ink-light);">&larr; Back to the blog</a></p>
-  </div>
-</div>
+    <!-- Step 2: authenticator code -->
+    <form class="a-step" id="stepCode" autocomplete="off">
+      <div class="a-field"><label for="code">6-digit code from your authenticator app</label>
+        <input class="a-code" id="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" required></div>
+      <button class="a-btn full" type="submit">Verify</button>
+      <p style="text-align:center;margin:10px 0 0"><button type="button" class="a-link" data-back>&larr; Use a different account</button></p>
+    </form>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/js/data.js"></script>
+    <!-- Step 3: first-time authenticator set-up -->
+    <form class="a-step" id="stepEnroll" autocomplete="off">
+      <div class="a-note">One-time set-up: scan this with an authenticator app (Google Authenticator, 1Password, Authy…), then type the 6-digit code it shows.</div>
+      <img class="a-qr" id="qr" alt="QR code for your authenticator app">
+      <p class="hint" style="text-align:center">Can't scan? Enter this key instead:</p>
+      <div class="a-secret" id="secret"></div>
+      <div class="a-field" style="margin-top:16px"><label for="enrolCode">6-digit code</label>
+        <input class="a-code" id="enrolCode" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" required></div>
+      <button class="a-btn full" type="submit">Finish set-up</button>
+    </form>
+
+    <p class="a-auth-foot"><a href="/">&larr; Back to the blog</a></p>
+  </div>
+</main>
+<script src="/js/config.js"></script>
+<script src="/js/vendor/supabase-2.116.0.js"></script>
+<script src="/js/cms.js"></script>
 <script src="/js/admin-login.js"></script>
 </body>
 </html>

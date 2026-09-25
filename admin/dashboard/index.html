@@ -4,143 +4,86 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Write a Post | Tearri Grundy</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cbadidkhyepefebjnvsl.supabase.co; connect-src 'self' https://cbadidkhyepefebjnvsl.supabase.co; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<title>Dashboard | Tearri Grundy</title>
 <link rel="icon" type="image/png" href="/images/favicon.png">
 <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
 <link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/admin.css">
+<script src="/js/admin-guard.js"></script>
 </head>
-<body>
+<body class="admin">
 
-<header class="site-header">
-  <nav class="nav">
-    <a href="/" class="nav-logo">Tearri <span>Grundy</span></a>
-    <div>
-      <a href="/blog/" class="btn btn-outline" style="padding:9px 20px;font-size:0.85rem;margin-right:10px;">View Blog</a>
-      <button class="btn" id="logoutBtn" style="padding:9px 20px;font-size:0.85rem;">Log Out</button>
-    </div>
-  </nav>
-</header>
+<div class="a-shell hidden" id="shell">
+  <header class="a-top">
+    <a class="a-brand" href="#home">Tearri Grundy</a>
+    <button class="a-icon a-burger" id="burger" aria-label="Menu" aria-expanded="false">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+  </header>
+  <div class="a-scrim" id="scrim"></div>
 
-<section style="padding-bottom:0;">
-  <div class="container">
-    <div class="welcome-banner">Welcome back, Butterfly <span>xxx</span></div>
-  </div>
-</section>
-
-<section>
-  <div class="container dashboard">
-
-    <div class="dashboard-panel">
-      <div class="dashboard-header">
-        <h2 style="margin:0;">Write a New Post</h2>
-      </div>
-
-      <div class="form-success" id="formSuccess">Post published! It's now live on the blog.</div>
-      <div class="form-success" id="draftRestored" style="background:var(--sand);color:var(--ink);">
-        Draft restored from your last session. <button type="button" id="discardDraftBtn" class="icon-btn" style="text-decoration:underline;">Discard it and start blank</button>
-      </div>
-
-      <form id="postForm">
-        <div class="form-group">
-          <label for="title">Title</label>
-          <input type="text" id="title" required placeholder="e.g. Two Days in Kyoto">
-        </div>
-
-        <div class="form-group">
-          <label for="category">Category</label>
-          <select id="category" required>
-            <option value="">Select a category</option>
-            <option>Destinations</option>
-            <option>Food & Drink</option>
-            <option>Travel Tips</option>
-            <option>Culture</option>
-            <option>Adventure</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="imageFile">Cover Image</label>
-          <input type="file" id="imageFile" accept="image/*">
-          <img id="imagePreview" alt="" style="display:none;margin-top:12px;border-radius:8px;max-height:180px;object-fit:cover;width:100%;">
-        </div>
-
-        <div class="form-group">
-          <label for="excerpt">Short Excerpt</label>
-          <input type="text" id="excerpt" required placeholder="One sentence that appears on the blog cards" maxlength="160">
-        </div>
-
-        <div class="form-group">
-          <label>Post Content</label>
-          <p style="font-size:0.82rem;color:var(--ink-light);margin:-4px 0 12px;font-weight:400;text-transform:none;letter-spacing:0;">Build your post block by block. Titles and subtitles break up the story, paragraphs come in three sizes, bullet lists are handy for quick tips, and photo blocks let you drop in more pictures anywhere in the post.</p>
-          <div id="contentBlocks"><!-- rows injected by js/admin-dashboard.js --></div>
-          <button type="button" id="addBlockBtn" class="btn btn-outline" style="padding:9px 20px;font-size:0.85rem;">+ Add Block</button>
-        </div>
-
-        <div class="form-group">
-          <label class="checkbox-label">
-            <input type="checkbox" id="scheduleToggle">
-            Schedule this for later
-          </label>
-          <div class="schedule-panel" id="schedulePanel">
-            <label for="publishAt">Publish Date &amp; Time</label>
-            <input type="datetime-local" id="publishAt">
-            <p style="font-size:0.8rem;color:var(--ink-light);margin:6px 0 0;font-weight:400;text-transform:none;letter-spacing:0;">Pick a future date and time — it'll go live on its own, right on time.</p>
-          </div>
-        </div>
-
-        <button type="submit" class="btn btn-full" id="submitBtn">Publish Post</button>
-      </form>
-    </div>
-
-    <div class="dashboard-panel preview-panel">
-      <div class="dashboard-header">
-        <h2 style="margin:0;"><span class="live-dot"></span>Live Preview</h2>
-      </div>
-      <div class="preview-frame">
-        <div class="preview-chrome">
-          <span class="preview-dot"></span><span class="preview-dot"></span><span class="preview-dot"></span>
-          <span class="preview-url">tearrigrundy.com/post/</span>
-        </div>
-        <div class="preview-scroll">
-          <div class="preview-content" id="previewContent"></div>
-        </div>
+  <aside class="a-side" id="side">
+    <a class="a-brand" href="#home">Tearri Grundy<small>Blog dashboard</small></a>
+    <nav class="a-nav" id="nav">
+      <a href="#home" data-nav="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Overview</a>
+      <a href="#posts" data-nav="posts"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>Posts<span class="badge" id="postsBadge"></span></a>
+      <a href="#post/new" data-nav="post"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>Write a post</a>
+      <a href="#site" data-nav="site"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>Homepage &amp; About</a>
+      <a href="#earnings" data-nav="earnings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.5 9.2c-.4-.8-1.3-1.2-2.5-1.2-1.5 0-2.5.7-2.5 1.8 0 2.6 5 1.2 5 3.9 0 1.1-1.1 1.8-2.6 1.8-1.3 0-2.3-.5-2.7-1.4M12 6.5V8M12 16v1.5"/></svg>Earnings</a>
+      <a href="#categories" data-nav="categories"><svg viewBox="0 0 24 24"><path d="M20 12l-8 8-9-9V3h8z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg>Categories</a>
+      <a href="#security" data-nav="security"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>Security</a>
+    </nav>
+    <div class="a-side-foot">
+      <div class="who" id="who"></div>
+      <div class="timer">Signs out after <span id="idleMins">5</span> min of no activity.</div>
+      <div class="a-actions">
+        <a class="a-btn ghost sm" href="/" target="_blank" rel="noopener">View site</a>
+        <button class="a-btn ghost sm" id="logoutBtn">Sign out</button>
       </div>
     </div>
+  </aside>
 
-  </div>
-</section>
+  <main class="a-main" id="view" tabindex="-1"></main>
+  <div class="a-savebar" id="savebar"></div>
+</div>
 
-<section>
-  <div class="container">
-    <div class="dashboard-panel">
-      <div class="dashboard-header">
-        <h2 style="margin:0;">Published Posts</h2>
-      </div>
-      <div id="postsList">
-        <!-- populated by js/admin-dashboard.js -->
-      </div>
+<!-- Password re-check -->
+<div class="a-overlay" id="pwModal" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
+  <form class="a-modal" id="pwForm" autocomplete="off">
+    <h3 id="pwTitle">Confirm it's you</h3>
+    <p id="pwMsg">Enter your password to continue.</p>
+    <div class="a-err" id="pwErr" role="alert"></div>
+    <div class="a-field"><input type="password" id="pwInput" autocomplete="current-password" placeholder="Your password" aria-label="Password"></div>
+    <div class="btns">
+      <button type="button" class="a-btn ghost" id="pwCancel">Cancel</button>
+      <button type="submit" class="a-btn" id="pwOk">Confirm</button>
     </div>
-  </div>
-</section>
+  </form>
+</div>
 
-<div class="modal-overlay" id="confirmModal" style="display:none;">
-  <div class="modal-card">
-    <h3>Confirm It's You</h3>
-    <p id="confirmMessage" style="color:var(--ink-light);font-size:0.9rem;margin-bottom:16px;">Enter your password to continue.</p>
-    <div class="form-error" id="confirmError">Incorrect password. Try again.</div>
-    <div class="form-group">
-      <label for="confirmPassword">Password</label>
-      <input type="password" id="confirmPassword" autocomplete="current-password">
-    </div>
-    <div style="display:flex;gap:12px;margin-top:8px;">
-      <button type="button" class="btn btn-outline" id="confirmCancelBtn" style="flex:1;">Cancel</button>
-      <button type="button" class="btn" id="confirmSubmitBtn" style="flex:1;">Confirm</button>
+<!-- Generic confirm -->
+<div class="a-overlay" id="askModal" role="dialog" aria-modal="true" aria-labelledby="askTitle">
+  <div class="a-modal">
+    <h3 id="askTitle"></h3>
+    <p id="askText"></p>
+    <div class="btns">
+      <button type="button" class="a-btn ghost" id="askNo">Cancel</button>
+      <button type="button" class="a-btn" id="askYes">OK</button>
     </div>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/js/data.js"></script>
+<div class="a-toasts" id="toasts" aria-live="polite"></div>
+
+<script src="/js/config.js"></script>
+<script src="/js/vendor/supabase-2.116.0.js"></script>
+<script src="/js/site-defaults.js"></script>
+<script src="/js/cms.js"></script>
 <script src="/js/admin-dashboard.js"></script>
+<script src="/js/admin-editor.js"></script>
+<script src="/js/admin-site.js"></script>
+<script src="/js/admin-earnings.js"></script>
+<script src="/js/admin-boot.js"></script>
 </body>
 </html>
