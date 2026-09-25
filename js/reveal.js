@@ -15,7 +15,9 @@ window.ScrollReveal = (function () {
         observer.unobserve(entry.target);
       }
     });
-  }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' });
+  // threshold 0 (not a percentage): a long post is far taller than the screen, so "12% visible"
+  // could never be reached and the whole post stayed invisible.
+  }, { threshold: 0, rootMargin: '0px 0px -60px 0px' });
 
   function observe(el) {
     if (!el) return;
