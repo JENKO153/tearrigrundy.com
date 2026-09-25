@@ -267,3 +267,10 @@ table.a-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
 .a-how li { margin-bottom: 6px; }
 
 .a-sub { font-size: .95rem; margin: 18px 0 2px; color: var(--teal); }
+
+/* earnings table */
+.a-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 4px -4px 6px; padding: 0 4px; }
+.a-earn td .m { font-size: .75rem; color: var(--ink-light); }
+.a-earn td b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.a-earn-total td { border-top: 2px solid var(--a-line); background: var(--a-soft); }
+.a-code-block { background: var(--ink); color: #f6efe4; border-radius: 10px; padding: 12px 14px; font-size: .8rem; overflow-x: auto; margin: 8px 0 0; white-space: pre; }

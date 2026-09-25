@@ -289,6 +289,30 @@
         changed(data, error, 'Could not save the page content.');
       },
 
+      /* ---- earnings (live feeds come from the `earnings` Edge Function; manual figures from a private table) ---- */
+      async loadEarnings(months = 6) {
+        const out = { live: null, liveError: null, manual: [], manualAvailable: true };
+        try {
+          const { data, error } = await admin().functions.invoke('earnings', { body: { months } });
+          if (error) {
+            let status = 0, message = '';
+            try { status = error.context.status; message = (await error.context.json()).error || ''; } catch (e) { /* keep defaults */ }
+            out.liveError = { status, message: message || error.message };
+          } else out.live = data;
+        } catch (e) { out.liveError = { status: 0, message: e.message }; }
+        const m = await admin().from('earnings_manual').select('*').order('month', { ascending: false });
+        if (m.error) out.manualAvailable = false; else out.manual = m.data;
+        return out;
+      },
+      async saveManualEarning(row) {
+        const { data, error } = await admin().from('earnings_manual').upsert(row).select('month');
+        changed(data, error, 'Could not save that figure.');
+      },
+      async deleteManualEarning(month, platform) {
+        const { data, error } = await admin().from('earnings_manual').delete().eq('month', month).eq('platform', platform).select('month');
+        changed(data, error);
+      },
+
       /* ---- activity ---- */
       async auditLog() {
         const { data, error } = await admin().from('audit_log').select('*').order('at', { ascending: false }).limit(100);
@@ -398,6 +422,25 @@
       },
       loadSettings: async () => ({ data: read('settings', {}), available: true }),
       async saveSettings(value) { guard(); write('settings', value); log('update', 'site_settings', 'Homepage & About content'); },
+      async loadEarnings(months = 6) {
+        const now = new Date(), live = { travelpayouts: { configured: true, ok: true, currency: 'USD', months: {} }, stay22: { configured: true, ok: true, currency: 'USD', months: {} } };
+        for (let i = 0; i < months; i++) {
+          const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1)), k = d.toISOString().slice(0, 7);
+          const f = (n) => Math.round(n * 100) / 100;
+          live.travelpayouts.months[k] = { confirmed: f(38 + i * 11.3), pending: i === 0 ? 24.5 : 0, count: 4 + i };
+          live.stay22.months[k] = { confirmed: f(52 + i * 7.9), pending: i < 2 ? 31.2 : 0, count: 6 + i, statuses: { confirmed: 5, cancelled: 1 } };
+        }
+        return { live: { updated: now.toISOString(), platforms: live }, liveError: null, manual: read('manual_earnings', []), manualAvailable: true };
+      },
+      async saveManualEarning(row) {
+        guard();
+        const list = read('manual_earnings', []).filter((r) => !(r.month === row.month && r.platform === row.platform));
+        list.push(row); write('manual_earnings', list); log('update', 'earnings', `${row.platform} ${row.month}`);
+      },
+      async deleteManualEarning(month, platform) {
+        guard();
+        write('manual_earnings', read('manual_earnings', []).filter((r) => !(r.month === month && r.platform === platform)));
+      },
       auditLog: async () => read('audit', []),
       serverStatus: async () => ({ drafts: true, security: true, settings: true, demo: true }),
       caps: { drafts: true, confirmRpc: true, audit: true, mfa: false },

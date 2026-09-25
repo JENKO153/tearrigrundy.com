@@ -40,6 +40,135 @@
   A.moneyStatus = (money) => status(merge(money));
   const chip = (s) => `<span class="a-pill ${s === 'live' ? 'live' : s === 'todo' ? 'draft' : ''}">${s === 'live' ? 'Live' : s === 'todo' ? 'Needs details' : 'Off'}</span>`;
 
+  /* =====================================================================
+     Earnings table: live feeds (Travelpayouts, Stay22) + figures typed in by hand (AdSense etc.)
+     ===================================================================== */
+  const PLATFORMS = [['travelpayouts', 'Travelpayouts'], ['stay22', 'Stay22'], ['adsense', 'Google AdSense']];
+  const cache = { at: 0, data: null };
+  A.getEarnings = async (force) => {
+    if (!force && cache.data && Date.now() - cache.at < 10 * 60 * 1000) return cache.data;
+    cache.data = await CMS.loadEarnings(6);
+    cache.at = Date.now();
+    return cache.data;
+  };
+  const money = (n, cur) => `${cur || ''} ${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim();
+  const lastMonths = (n) => {
+    const now = new Date(), out = [];
+    for (let i = 0; i < n; i++) out.push(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1)).toISOString().slice(0, 7));
+    return out;
+  };
+  const monthName = (k) => new Date(`${k}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+  // Works out what to show in every cell. A figure typed in by hand wins over the live feed for that month.
+  function buildGrid(data) {
+    const months = lastMonths(6), grid = {}, totals = {}, byCurrency = {};
+    const liveFeeds = (data.live && data.live.platforms) || {};
+    months.forEach((m) => {
+      grid[m] = {};
+      PLATFORMS.forEach(([p]) => {
+        const manual = data.manual.find((r) => r.month === m && r.platform === p);
+        const feed = liveFeeds[p];
+        let cell = null;
+        if (manual) cell = { amount: Number(manual.amount), pending: 0, currency: manual.currency, manual: true };
+        else if (feed && feed.ok) { const b = feed.months[m]; cell = b ? { amount: b.confirmed, pending: b.pending, currency: feed.currency } : { amount: 0, pending: 0, currency: feed.currency }; }
+        grid[m][p] = cell;
+        if (cell) {
+          const t = (totals[p] ||= { amount: 0, pending: 0, currency: cell.currency });
+          t.amount += cell.amount; t.pending += cell.pending;
+          const c = (byCurrency[m] ||= {}); c[cell.currency] = (c[cell.currency] || 0) + cell.amount;
+        }
+      });
+    });
+    return { months, grid, totals, byCurrency };
+  }
+  A.earningsThisMonth = (data) => { const g = buildGrid(data); return g.byCurrency[g.months[0]] || {}; };
+
+  function feedStatus(data) {
+    const feeds = (data.live && data.live.platforms) || {};
+    const err = data.liveError;
+    return PLATFORMS.filter(([p]) => p !== 'adsense').map(([p, label]) => {
+      const f = feeds[p];
+      let state, text;
+      if (err) { state = 'draft'; text = err.status === 404 || !err.status ? 'Live feed not switched on yet' : esc(err.message || 'Live feed unavailable'); }
+      else if (!f || !f.configured) { state = ''; text = 'Not connected'; }
+      else if (!f.ok) { state = 'bad'; text = esc(f.error || 'Could not load'); }
+      else { state = 'live'; text = 'Live'; }
+      return `<li><div class="grow"><div class="t">${label}</div><div class="m">${text}</div></div><span class="a-pill ${state}">${state === 'live' ? 'Live' : state === 'bad' ? 'Problem' : state === 'draft' ? 'Setup needed' : 'Off'}</span></li>`;
+    }).join('');
+  }
+
+  function tableHtml(data) {
+    const { months, grid, totals, byCurrency } = buildGrid(data);
+    const cell = (c) => (!c ? '<span class="m">—</span>' : `<b>${money(c.amount, c.currency)}</b>${c.pending ? `<div class="m">+ ${money(c.pending, c.currency)} pending</div>` : ''}${c.manual ? '<div class="m">typed in</div>' : ''}`);
+    const combined = (byCur) => { const parts = Object.entries(byCur || {}).map(([cur, n]) => money(n, cur)); return parts.length ? `<b>${parts.join(' + ')}</b>` : '<span class="m">—</span>'; };
+    const yearByCur = {};
+    Object.values(byCurrency).forEach((c) => Object.entries(c).forEach(([cur, n]) => { yearByCur[cur] = (yearByCur[cur] || 0) + n; }));
+    return `<div class="a-scroll"><table class="a-table a-earn"><thead><tr><th>Month</th>${PLATFORMS.map(([, l]) => `<th>${l}</th>`).join('')}<th>Total</th></tr></thead><tbody>
+      ${months.map((m) => `<tr><td>${monthName(m)}</td>${PLATFORMS.map(([p]) => `<td>${cell(grid[m][p])}</td>`).join('')}<td>${combined(byCurrency[m])}</td></tr>`).join('')}
+      <tr class="a-earn-total"><td>Last 6 months</td>${PLATFORMS.map(([p]) => `<td>${totals[p] ? `<b>${money(totals[p].amount, totals[p].currency)}</b>${totals[p].pending ? `<div class="m">+ ${money(totals[p].pending, totals[p].currency)} pending</div>` : ''}` : '<span class="m">—</span>'}</td>`).join('')}<td>${combined(yearByCur)}</td></tr>
+      </tbody></table></div>`;
+  }
+
+  async function paintEarnings(box, force) {
+    box.innerHTML = '<p class="hint">Loading earnings…</p>';
+    let data;
+    try { data = await A.getEarnings(force); } catch (e) { box.innerHTML = `<p class="hint">Could not load earnings: ${esc(e.message)}</p>`; return; }
+    const updated = data.live && data.live.updated ? `Live figures updated ${A.ago(data.live.updated)}.` : 'Live figures are not connected yet.';
+    box.innerHTML = `<div class="a-card-top"><h2>Earnings</h2><button class="a-btn ghost sm" id="earnRefresh" type="button">Refresh</button></div>
+      <p class="hint">Confirmed earnings by month. “Pending” is booked but not paid out yet. ${updated}</p>
+      ${tableHtml(data)}
+      <h3 class="a-sub">Where the numbers come from</h3><ul class="a-list">${feedStatus(data)}<li><div class="grow"><div class="t">Google AdSense</div><div class="m">Typed in by hand below (Google needs a separate sign-in setup for a live feed).</div></div><span class="a-pill">Manual</span></li></ul>
+      <details class="a-how"><summary>Set up the live feeds (Travelpayouts &amp; Stay22)</summary><ol>
+        <li>Run <code>supabase/02-security.sql</code> and <code>supabase/03-earnings.sql</code> in the Supabase SQL Editor (if you haven't).</li>
+        <li><b>Travelpayouts:</b> in your account go to <b>Profile → API token</b> and copy the token.</li>
+        <li><b>Stay22:</b> in the Stay22 Hub go to <b>Settings → Hub Data Reporting API</b>, name a token, press <b>Generate</b> and copy it (it is only shown once). A new token becomes active after its first successful use, so the first refresh may take a moment.</li>
+        <li>In a terminal, in the website's folder (needs the Supabase command-line tool):<pre class="a-code-block">supabase login
+supabase link --project-ref cbadidkhyepefebjnvsl
+supabase secrets set TRAVELPAYOUTS_TOKEN=paste-token-here STAY22_API_KEY=paste-key-here
+supabase functions deploy earnings</pre></li>
+        <li>Press <b>Refresh</b> above. The tokens stay inside Supabase; they are never on the website.</li></ol></details>`;
+    $('earnRefresh').onclick = () => paintEarnings(box, true);
+    manualCard(data);
+  }
+
+  function manualCard(data) {
+    const holder = $('earnManual');
+    if (!holder) return;
+    if (!data.manualAvailable) {
+      holder.innerHTML = '<h2>Type in a figure</h2><p class="hint" style="margin:0">Run <code>supabase/03-earnings.sql</code> once to switch this on.</p>';
+      return;
+    }
+    const thisMonth = lastMonths(1)[0];
+    holder.innerHTML = `<h2>Type in a figure</h2><p class="hint">For AdSense (or to correct a month). A figure you type replaces the live number for that platform and month.</p>
+      <div class="a-two"><div class="a-field"><label for="mPlat">Platform</label><select id="mPlat">${PLATFORMS.map(([p, l]) => `<option value="${p}" ${p === 'adsense' ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+        <div class="a-field"><label for="mMonth">Month</label><input type="month" id="mMonth" value="${thisMonth}" max="${thisMonth}"></div></div>
+      <div class="a-two"><div class="a-field"><label for="mAmount">Amount earned</label><input id="mAmount" inputmode="decimal" placeholder="e.g. 42.50" autocomplete="off"></div>
+        <div class="a-field"><label for="mCur">Currency</label><input id="mCur" value="AUD" maxlength="3" autocomplete="off"></div></div>
+      <button class="a-btn sm" id="mSave" type="button">Save figure</button>
+      ${data.manual.length ? `<ul class="a-list" style="margin-top:14px">${data.manual.slice(0, 12).map((r) => `<li><div class="grow"><div class="t">${PLATFORMS.find(([p]) => p === r.platform)?.[1] || esc(r.platform)} · ${monthName(r.month)}</div><div class="m">${money(r.amount, r.currency)}</div></div><button class="a-icon danger" data-mdel="${esc(r.month)}|${esc(r.platform)}">Remove</button></li>`).join('')}</ul>` : ''}`;
+    $('mSave').onclick = async () => {
+      const amount = Number(String($('mAmount').value).replace(/[, ]/g, ''));
+      const cur = $('mCur').value.trim().toUpperCase();
+      if (!Number.isFinite(amount) || amount < 0 || $('mAmount').value.trim() === '') { A.toast('Enter the amount as a number, like 42.50.', 'bad'); return; }
+      if (!/^[A-Z]{3}$/.test(cur)) { A.toast('Currency should be 3 letters, like AUD or USD.', 'bad'); return; }
+      if (!$('mMonth').value) { A.toast('Pick a month.', 'bad'); return; }
+      try {
+        const res = await A.withWrite('save this earnings figure', () => CMS.saveManualEarning({ month: $('mMonth').value, platform: $('mPlat').value, amount: Math.round(amount * 100) / 100, currency: cur }));
+        if (res.cancelled) return;
+        A.toast('Figure saved', 'ok'); paintEarnings($('earnTable'), true);
+      } catch (e) { A.toast(e.message, 'bad'); }
+    };
+    holder.onclick = async (e) => {
+      const d = e.target.closest('[data-mdel]');
+      if (!d) return;
+      const [month, platform] = d.dataset.mdel.split('|');
+      try {
+        const res = await A.withWrite('remove this figure', () => CMS.deleteManualEarning(month, platform));
+        if (!res.cancelled) { A.toast('Removed', 'ok'); paintEarnings($('earnTable'), true); }
+      } catch (ex) { A.toast(ex.message, 'bad'); }
+    };
+  }
+
   A.views.earnings = async function (arg, root) {
     const { data: saved, available } = await CMS.loadSettings();
     const m = merge(saved.money);
@@ -51,6 +180,8 @@
     root.innerHTML = `<div class="a-view">
       <div class="a-head"><div><h1 class="a-h1">Earnings</h1><p class="a-lead">Switch on ads and travel affiliate links, and control exactly where they appear. Nothing shows on the site until a service is on and filled in.</p></div></div>
       ${available ? '' : '<div class="a-card" style="border-left:4px solid var(--a-warn)"><h2>One quick set-up step</h2><p class="hint" style="margin:0">Saving needs <code>supabase/01-dashboard.sql</code> to be run once.</p></div>'}
+      <div class="a-card" id="earnTable"></div>
+      <div class="a-card" id="earnManual"></div>
 
       <div class="a-card"><div class="a-card-top"><h2>Stay22 — hotel links &amp; maps</h2><span id="chip_stay22"></span></div>
         <p class="hint">Two ways to earn from hotel bookings. Use either or both.</p>
@@ -101,6 +232,8 @@
       <div class="a-card"><h2>Affiliate disclosure</h2><p class="hint">Shown at the bottom of any post that has a hotel map or travel widget. Most countries require this.</p>
         <div class="a-field" style="margin:0"><textarea data-path="disclosure" rows="3" maxlength="300" placeholder="${esc(DEFAULT_DISCLOSURE)}" aria-label="Disclosure text"></textarea><p class="hint">Leave blank to use the wording above.</p></div></div>
     </div>`;
+
+    paintEarnings($('earnTable'), false);
 
     /* ---------- bind form <-> state ---------- */
     const get = (path) => path.split('.').reduce((o, k) => o[k], m);

@@ -248,6 +248,7 @@
         <a class="a-tile" href="#posts"><b>${sched.length}</b><span>Scheduled</span></a>
         <a class="a-tile" href="#posts"><b>${drafts.length}</b><span>Drafts</span></a>
         <div class="a-tile"><b>${cats.size}</b><span>Categories</span></div>
+        <a class="a-tile" href="#earnings"><b id="earnTile" style="font-size:1.3rem">…</b><span>Earned this month</span></a>
       </div>
       <div class="a-cols">
         <div class="a-card"><h2>Needs your attention</h2><p class="hint">Things waiting on you.</p>
@@ -263,6 +264,11 @@
           </div>
         </div>
       </div></div>`;
+    // Earnings load after the page so a slow feed never holds up the overview.
+    Admin.getEarnings().then((d) => {
+      const t = Admin.earningsThisMonth(d), parts = Object.entries(t).map(([cur, n]) => `${cur} ${n.toFixed(2)}`);
+      const el = $('earnTile'); if (el) el.textContent = parts.length ? parts.join(' + ') : 'Not connected';
+    }).catch(() => { const el = $('earnTile'); if (el) el.textContent = 'Not connected'; });
   };
 
   /* =====================================================================
