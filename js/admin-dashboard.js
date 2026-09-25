@@ -187,6 +187,19 @@
   Admin.thumb = (p) => `<div class="a-thumb" ${p.image ? `style="background-image:url('${esc(p.image)}')"` : ''}>${p.image ? '' : 'No cover'}</div>`;
   Admin.viewUrl = (p) => `/post/?id=${encodeURIComponent(p.slug)}`;
 
+  // Live or scheduled post -> draft: it leaves the site straight away and stays editable.
+  Admin.takeDown = async (p) => {
+    if (!CMS.caps.drafts) { Admin.toast('Taking a post down needs the database update — run supabase/01-dashboard.sql first.', 'bad'); return false; }
+    const ok = await Admin.confirmBox({ title: 'Take this post down?', text: `“${p.title || 'Untitled'}” disappears from the site straight away and becomes a draft. You can edit it, then publish it again or delete it.`, ok: 'Take it down' });
+    if (!ok) return false;
+    try {
+      const res = await Admin.withWrite('take this post down', () => CMS.savePost({ ...p, status: 'draft' }));
+      if (res.cancelled) return false;
+      Admin.toast('Post taken down — it is now a draft', 'ok');
+      return true;
+    } catch (e) { Admin.toast(e.message, 'bad'); return false; }
+  };
+
   Admin.deletePost = async (p) => {
     const ok = await Admin.confirmBox({ title: 'Delete this post?', text: `“${p.title || 'Untitled'}” will be removed for good. This can't be undone.`, ok: 'Delete', danger: true });
     if (!ok) return false;
@@ -274,13 +287,19 @@
         return `<div class="a-post" data-id="${esc(p.id)}">${Admin.thumb(p)}
           <div><div class="t">${esc(p.title || 'Untitled')}</div>
             <div class="m">${Admin.pill(p)}<span>${esc(p.category || 'No category')}</span><span>${s === 'scheduled' ? 'Goes live ' + Admin.fmtDateTime(p.date) : s === 'draft' ? 'Edited ' + Admin.ago(p.updated_at || p.date) : Admin.fmtDate(p.date)}</span></div></div>
-          <div class="acts"><a class="a-btn ghost sm" href="#post/${esc(p.id)}">Edit</a>${s === 'live' ? `<a class="a-icon" title="View on site" href="${Admin.viewUrl(p)}" target="_blank" rel="noopener">View ↗</a>` : ''}<button class="a-icon danger" data-del="${esc(p.id)}">Delete</button></div></div>`;
+          <div class="acts"><a class="a-btn ghost sm" href="#post/${esc(p.id)}">Edit</a>${s === 'live' ? `<a class="a-icon" title="View on site" href="${Admin.viewUrl(p)}" target="_blank" rel="noopener">View ↗</a>` : ''}${s !== 'draft' ? `<button class="a-icon" title="Remove from the site and keep as a draft" data-down="${esc(p.id)}">Take down</button>` : ''}<button class="a-icon danger" data-del="${esc(p.id)}">Delete</button></div></div>`;
       }).join('') : `<div class="a-card a-empty">${Admin.posts.length ? 'No posts match that.' : 'No posts yet. <a href="#post/new">Write your first one →</a>'}</div>`;
     }
     draw();
     $('tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) { tab = b.dataset.tab; draw(); } });
     $('q').addEventListener('input', (e) => { q = e.target.value.trim().toLowerCase(); draw(); });
     $('plist').addEventListener('click', async (e) => {
+      const down = e.target.closest('[data-down]');
+      if (down) {
+        const p = Admin.posts.find((x) => String(x.id) === down.dataset.down);
+        if (p && await Admin.takeDown(p)) { await Admin.loadPosts(); draw(); }
+        return;
+      }
       const b = e.target.closest('[data-del]');
       if (!b) return;
       const p = Admin.posts.find((x) => String(x.id) === b.dataset.del);

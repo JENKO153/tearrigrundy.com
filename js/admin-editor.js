@@ -336,7 +336,7 @@
       const bar = $('savebar');
       const st = lastSaved && !A.dirty ? `<span class="status ok">✓ Saved ${lastSaved}</span>` : A.dirty ? '<span class="status dirty">● Unsaved changes — autosaved on this device</span>' : '<span class="status">No changes yet</span>';
       const l = label();
-      bar.innerHTML = `${st}${wasLive && CMS.caps.drafts ? '<button class="a-btn ghost" id="bDraft" type="button">Move back to drafts</button>' : wasLive ? '' : '<button class="a-btn ghost" id="bDraft" type="button">Save draft</button>'}<button class="a-btn" id="bPub" type="button">${l.text}</button>`;
+      bar.innerHTML = `${st}${wasLive ? '<button class="a-btn ghost" id="bDraft" type="button" title="Remove it from the site and keep it as a draft">Take down (back to draft)</button>' : '<button class="a-btn ghost" id="bDraft" type="button">Save draft</button>'}<button class="a-btn" id="bPub" type="button">${l.text}</button>`;
       bar.classList.add('on');
       $('pubInfo').textContent = wasLive
         ? (new Date(liveDate) > new Date() ? `Scheduled for ${A.fmtDateTime(liveDate)}.` : `Live since ${A.fmtDate(liveDate)}. Changes go live as soon as you press Update.`)
@@ -374,6 +374,7 @@
       if (saving) return;
       const publish = kind === 'publish';
       if (publish && !validate()) return;
+      if (!publish && wasLive && !CMS.caps.drafts) return invalid('Taking a post down needs the database update — run supabase/01-dashboard.sql first.');
       if (!publish && !f.title.value.trim()) return invalid('Give your draft a title so you can find it again.', f.title);
       const when = scheduledDate();
       const scheduledFuture = when && when > new Date();
@@ -384,7 +385,7 @@
       if (!publish) date = when ? when.toISOString() : (post && post.date) || new Date().toISOString();
 
       const needsGrant = publish || wasLive;
-      const verb = !publish ? 'move this post back to drafts' : scheduledFuture ? 'schedule this post' : wasLive ? 'update this post' : 'publish this post';
+      const verb = !publish ? 'take this post down' : scheduledFuture ? 'schedule this post' : wasLive ? 'update this post' : 'publish this post';
       const btns = document.querySelectorAll('#savebar .a-btn');
       const run = async () => {
         const blocks = [];
@@ -409,12 +410,14 @@
         touched = false;
         try { localStorage.removeItem(WORK_KEY); localStorage.removeItem('tg_editor_new'); } catch (e) { /* ignore */ }
         WORK_KEY = `tg_editor_${saved.id}`;
+        const wasLiveBefore = wasLive;
         wasLive = saved.status !== 'draft'; liveDate = saved.date;
         cover = saved.image || ''; drawCover();
         [...blocksEl.children].forEach((row, i) => { const b = (saved.content || [])[i]; if (b && b.style === 'photo') setPhoto(row, b.image); });
         A.dirty = false;
         lastSaved = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-        A.toast(publish ? (scheduledFuture ? `Scheduled for ${A.fmtDateTime(date)}` : wasLive ? 'Post updated' : 'Post published! It\'s live on the blog.') : 'Draft saved', 'ok');
+        const vl = $('viewLive'); if (vl) vl.classList.toggle('hidden', !wasLive);
+        A.toast(!publish && !wasLive && wasLiveBefore ? 'Post taken down — it is now a draft. Edit it, then publish again or delete it.' : publish ? (scheduledFuture ? `Scheduled for ${A.fmtDateTime(date)}` : wasLive ? 'Post updated' : 'Post published! It\'s live on the blog.') : 'Draft saved', 'ok');
         await A.loadPosts();
         if (publish) { A.go('#posts'); return; }
         if (wasNew) history.replaceState(null, '', `#post/${saved.id}`);
