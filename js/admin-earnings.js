@@ -71,6 +71,12 @@
         let cell = null;
         if (manual) cell = { amount: Number(manual.amount), pending: 0, currency: manual.currency, manual: true };
         else if (feed && feed.ok) { const b = feed.months[m]; cell = b ? { amount: b.confirmed, pending: b.pending, currency: feed.currency } : { amount: 0, pending: 0, currency: feed.currency }; }
+        // Everything is shown in Australian dollars, converted at that month's average exchange rate.
+        if (cell && cell.currency !== 'AUD') {
+          const table = (data.live && data.live.fx && data.live.fx[cell.currency]) || {};
+          const rate = table[m] || table.latest;
+          if (rate) cell = { ...cell, amount: cell.amount * rate, pending: cell.pending * rate, currency: 'AUD', from: cell.currency, orig: cell.amount };
+        }
         grid[m][p] = cell;
         if (cell) {
           const t = (totals[p] ||= { amount: 0, pending: 0, currency: cell.currency });
@@ -117,16 +123,14 @@
   }
 
   function tableHtml(g) {
-    const cell = (c) => (!c ? '<span class="m">—</span>' : `<b>${money(c.amount, c.currency)}</b>${c.pending ? `<div class="m">+ ${money(c.pending, c.currency)} pending</div>` : ''}${c.manual ? '<div class="m">typed in</div>' : ''}`);
+    const cell = (c) => (!c ? '<span class="m">—</span>' : `<b${c.from ? ` title="Converted from ${money(c.orig, c.from)}"` : ''}>${money(c.amount, c.currency)}</b>${c.pending ? `<div class="m">+ ${money(c.pending, c.currency)} pending</div>` : ''}${c.manual ? '<div class="m">typed in</div>' : ''}`);
     return `<div class="a-scroll"><table class="a-table a-earn"><thead><tr><th>Month</th>${PLATFORMS.map(([, l]) => `<th>${l}</th>`).join('')}<th>Total</th></tr></thead><tbody>
       ${g.months.map((m) => `<tr><td>${monthName(m)}</td>${PLATFORMS.map(([p]) => `<td>${cell(g.grid[m][p])}</td>`).join('')}<td>${joinMoney(g.byCurrency[m]) ? `<b>${joinMoney(g.byCurrency[m])}</b>` : '<span class="m">—</span>'}</td>`).join('')}
       </tbody></table></div>`;
   }
 
-  async function paintEarnings(box, force) {
-    box.innerHTML = '<p class="hint" style="padding:30px 0;text-align:center">Loading your earnings…</p>';
-    let data;
-    try { data = await A.getEarnings(force); } catch (e) { box.innerHTML = `<div class="a-card"><p class="hint">Could not load earnings: ${esc(e.message)}</p></div>`; return; }
+  // The headline total + one card per platform. Used on the Earnings page and on the Overview.
+  function summaryHtml(data, opts = {}) {
     const g = buildGrid(data), now = g.months[0], prev = g.months[1];
     const cur = g.byCurrency[now] || {};
     const pend = {};
@@ -146,17 +150,29 @@
         <div class="e-note">${c && c.pending ? `+ ${money(c.pending, c.currency)} pending` : 'this month'}</div>
         <div class="e-six">${t ? `${money(t.amount, t.currency)} over 6 months` : 'No figures yet'}</div>
         ${st.text ? `<div class="${st.kind === 'bad' || st.kind === 'todo' ? 'e-warn' : 'e-hint'}">${esc(st.text)}</div>` : ''}
-        ${st.kind === 'live' || st.kind === 'manual' || p === 'adsense' ? '' : '<button type="button" class="e-link" data-goto="conn">Connect →</button>'}
+        ${st.kind === 'live' || st.kind === 'manual' || p === 'adsense' ? '' : '<a class="e-link" href="#earnings/connections">Connect →</a>'}
       </div>`;
     }).join('');
-    box.innerHTML = `
+    const converted = Object.values(g.grid).some((row) => Object.values(row).some((c) => c && c.from));
+    const note = converted ? `Converted to AUD at each month's average exchange rate (${esc((data.live && data.live.fxSource) || 'ECB')}), so treat it as approximate.` : '';
+    return `
       <div class="e-hero"><div>
           <div class="e-eyebrow">Earned in ${monthName(now)}</div>
           <div class="e-big">${joinMoney(cur) || '<span class="e-none">Nothing yet</span>'}</div>
           <div class="e-sub">${joinMoney(pend) ? `+ ${joinMoney(pend)} pending · ` : ''}${delta}${!joinMoney(cur) ? 'Connect an account or type in a figure to get started.' : ''}</div>
+          ${note && !opts.overview ? `<div class="e-fx">${note}</div>` : ''}
         </div>
-        <div class="e-hero-side"><button class="a-btn ghost sm" id="earnRefresh" type="button">↻ Refresh</button><div class="e-updated">${updated}</div></div></div>
-      <div class="e-cards">${cards}</div>
+        <div class="e-hero-side">${opts.overview ? '<a class="a-btn ghost sm" href="#earnings">Full breakdown →</a>' : '<button class="a-btn ghost sm" id="earnRefresh" type="button">↻ Refresh</button>'}<div class="e-updated">${updated}</div></div></div>
+      <div class="e-cards">${cards}</div>`;
+  }
+  A.earningsSummaryHtml = (data, opts) => summaryHtml(data, opts);
+
+  async function paintEarnings(box, force) {
+    box.innerHTML = '<p class="hint" style="padding:30px 0;text-align:center">Loading your earnings…</p>';
+    let data;
+    try { data = await A.getEarnings(force); } catch (e) { box.innerHTML = `<div class="a-card"><p class="hint">Could not load earnings: ${esc(e.message)}</p></div>`; return; }
+    const g = buildGrid(data);
+    box.innerHTML = summaryHtml(data) + `
       <div class="a-card"><h2>Last 6 months</h2><p class="hint">Confirmed earnings each month. Hover a bar for the detail.</p>${chartHtml(g)}</div>
       <div class="a-card"><h2>Month by month</h2><p class="hint">“Pending” is booked but not paid out yet.</p>${tableHtml(g)}</div>
       <details class="a-how e-setup"><summary>Set up the live feeds (Travelpayouts &amp; Stay22)</summary><ol>

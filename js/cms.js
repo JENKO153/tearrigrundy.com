@@ -292,16 +292,17 @@
       /* ---- earnings (live feeds come from the `earnings` Edge Function; manual figures from a private table) ---- */
       async loadEarnings(months = 6) {
         const out = { live: null, liveError: null, manual: [], manualAvailable: true };
+        const m = await admin().from('earnings_manual').select('*').order('month', { ascending: false });
+        if (m.error) out.manualAvailable = false; else out.manual = m.data;
+        const currencies = [...new Set(out.manual.map((r) => r.currency).filter((c) => c && c !== 'AUD'))];
         try {
-          const { data, error } = await admin().functions.invoke('earnings', { body: { months } });
+          const { data, error } = await admin().functions.invoke('earnings', { body: { months, currencies } });
           if (error) {
             let status = 0, message = '';
             try { status = error.context.status; message = (await error.context.json()).error || ''; } catch (e) { /* keep defaults */ }
             out.liveError = { status, message: message || error.message };
           } else out.live = data;
         } catch (e) { out.liveError = { status: 0, message: e.message }; }
-        const m = await admin().from('earnings_manual').select('*').order('month', { ascending: false });
-        if (m.error) out.manualAvailable = false; else out.manual = m.data;
         return out;
       },
       async saveManualEarning(row) {
@@ -430,7 +431,9 @@
           live.travelpayouts.months[k] = { confirmed: f(38 + i * 11.3), pending: i === 0 ? 24.5 : 0, count: 4 + i };
           live.stay22.months[k] = { confirmed: f(52 + i * 7.9), pending: i < 2 ? 31.2 : 0, count: 6 + i, statuses: { confirmed: 5, cancelled: 1 } };
         }
-        return { live: { updated: now.toISOString(), platforms: live }, liveError: null, manual: read('manual_earnings', []), manualAvailable: true };
+        const fx = { USD: { latest: 1.52 } };
+        for (let i = 0; i < months; i++) fx.USD[new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1)).toISOString().slice(0, 7)] = 1.5 + i * 0.01;
+        return { live: { updated: now.toISOString(), platforms: live, fx, fxSource: 'demo rates' }, liveError: null, manual: read('manual_earnings', []), manualAvailable: true };
       },
       async saveManualEarning(row) {
         guard();

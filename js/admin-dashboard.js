@@ -217,9 +217,7 @@
      Overview
      ===================================================================== */
   Admin.views.home = async (arg, root) => {
-    const [posts, logs, status, settings] = await Promise.all([Admin.loadPosts(), CMS.auditLog().catch(() => null), CMS.serverStatus().catch(() => ({})), CMS.loadSettings().catch(() => ({ data: {} }))]);
-    const earn = Admin.moneyStatus((settings.data || {}).money);
-    const earnRow = (label, st) => `<li><div class="grow"><div class="t">${label}</div></div><span class="a-pill ${st === 'live' ? 'live' : st === 'todo' ? 'draft' : ''}">${st === 'live' ? 'Live' : st === 'todo' ? 'Needs details' : 'Off'}</span></li>`;
+    const [posts, logs, status] = await Promise.all([Admin.loadPosts(), CMS.auditLog().catch(() => null), CMS.serverStatus().catch(() => ({}))]);
     const live = posts.filter((p) => CMS.postState(p) === 'live');
     const sched = posts.filter((p) => CMS.postState(p) === 'scheduled');
     const drafts = posts.filter((p) => CMS.postState(p) === 'draft');
@@ -248,8 +246,8 @@
         <a class="a-tile" href="#posts"><b>${sched.length}</b><span>Scheduled</span></a>
         <a class="a-tile" href="#posts"><b>${drafts.length}</b><span>Drafts</span></a>
         <div class="a-tile"><b>${cats.size}</b><span>Categories</span></div>
-        <a class="a-tile" href="#earnings"><b id="earnTile" style="font-size:1.3rem">…</b><span>Earned this month</span></a>
       </div>
+      <div id="ovEarn"><div class="e-hero" style="opacity:.55"><div><div class="e-eyebrow">Earnings</div><div class="e-big"><span class="e-none">…</span></div></div></div></div>
       <div class="a-cols">
         <div class="a-card"><h2>Needs your attention</h2><p class="hint">Things waiting on you.</p>
           ${attention.length ? `<ul class="a-list">${attention.map((a) => `<li><div class="grow"><div class="t">${esc(a.t)}</div><div class="m">${esc(a.m)}</div></div><a class="a-btn ghost sm" href="${a.href}">${a.cta}</a></li>`).join('')}</ul>`
@@ -258,17 +256,15 @@
         <div>
           <div class="a-card"><h2>Quick actions</h2><p class="hint">Jump straight in.</p>
             <div class="a-actions"><a class="a-btn teal sm" href="#post/new">Write a post</a><a class="a-btn ghost sm" href="#site">Edit Homepage &amp; About</a><a class="a-btn ghost sm" href="/" target="_blank" rel="noopener">View the site</a></div></div>
-          <div class="a-card"><h2>Earnings</h2><p class="hint">What's making money on the site.</p><ul class="a-list">${earnRow('Google AdSense', earn.adsense)}${earnRow('Stay22 hotel maps', earn.stay22)}${earnRow('Travelpayouts', earn.travelpayouts)}</ul><a class="a-btn ghost sm" href="#earnings" style="margin-top:10px">Manage earnings</a></div>
           <div class="a-card"><h2>Recent activity</h2><p class="hint">${logs ? 'Every change made in this dashboard.' : 'Your latest edits.'}</p>
             ${activity.length ? `<ul class="a-list">${activity.map((a) => `<li><div class="grow"><div class="t">${esc(a.t)}</div><div class="m">${esc(a.m)}</div></div></li>`).join('')}</ul>` : '<div class="a-empty">Nothing yet — write your first post!</div>'}
           </div>
         </div>
       </div></div>`;
     // Earnings load after the page so a slow feed never holds up the overview.
-    Admin.getEarnings().then((d) => {
-      const t = Admin.earningsThisMonth(d), parts = Object.entries(t).map(([cur, n]) => `${cur} ${n.toFixed(2)}`);
-      const el = $('earnTile'); if (el) el.textContent = parts.length ? parts.join(' + ') : 'Not connected';
-    }).catch(() => { const el = $('earnTile'); if (el) el.textContent = 'Not connected'; });
+    Admin.getEarnings()
+      .then((d) => { const el = $('ovEarn'); if (el) el.innerHTML = Admin.earningsSummaryHtml(d, { overview: true }); })
+      .catch(() => { const el = $('ovEarn'); if (el) el.remove(); });
   };
 
   /* =====================================================================

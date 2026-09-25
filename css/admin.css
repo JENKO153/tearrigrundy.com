@@ -324,3 +324,6 @@ table.a-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
 @media (max-width: 640px) { .e-hero { padding: 22px 20px; } .e-hero-side { text-align: left; } .e-chart { height: 190px; } .e-legend .m { margin-left: 0; flex-basis: 100%; } }
 
 .e-hint { margin-top: 10px; font-size: .8rem; color: var(--ink-light); }
+
+.e-fx { margin-top: 10px; font-size: .78rem; color: var(--ink-light); max-width: 46ch; }
+#ovEarn { margin-bottom: 4px; }

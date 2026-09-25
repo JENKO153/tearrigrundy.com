@@ -115,6 +115,31 @@ async function stay22(start: string, end: string): Promise<Feed> {
   return feed;
 }
 
+/* ------------------------------ Exchange rates ------------------------------ */
+// Free European Central Bank rates via frankfurter.dev (no key). For each currency we return the
+// average daily rate for every month, so each month is converted at a fair rate for that month.
+async function fxRates(currencies: string[], start: string, end: string): Promise<Record<string, Record<string, number>> | null> {
+  const out: Record<string, Record<string, number>> = {};
+  try {
+    for (const cur of currencies) {
+      if (cur === 'AUD') continue;
+      const r = await fetch(`https://api.frankfurter.dev/v1/${start}..${end}?from=${cur}&to=AUD`);
+      if (!r.ok) return null;
+      const rates: Record<string, { AUD: number }> = (await r.json()).rates || {};
+      const sums: Record<string, { t: number; n: number }> = {};
+      let latest = 0;
+      for (const [day, v] of Object.entries(rates).sort()) {
+        const m = day.slice(0, 7);
+        (sums[m] ||= { t: 0, n: 0 }).t += v.AUD; sums[m].n++;
+        latest = v.AUD;
+      }
+      out[cur] = { latest };
+      for (const [m, x] of Object.entries(sums)) out[cur][m] = x.t / x.n;
+    }
+    return out;
+  } catch { return null; }
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('Origin');
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(origin) });
@@ -126,12 +151,19 @@ Deno.serve(async (req) => {
   if (denied) return json({ error: denied }, 403, origin);
 
   let months = 6;
-  try { months = Math.min(12, Math.max(1, Number((await req.json()).months) || 6)); } catch { /* default */ }
+  let extra: string[] = [];
+  try {
+    const body = await req.json();
+    months = Math.min(12, Math.max(1, Number(body.months) || 6));
+    extra = (Array.isArray(body.currencies) ? body.currencies : []).map(String).filter((c: string) => /^[A-Z]{3}$/.test(c)).slice(0, 5);
+  } catch { /* defaults */ }
   const now = new Date();
   const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (months - 1), 1));
   const start = first.toISOString().slice(0, 10);
   const end = now.toISOString().slice(0, 10);
 
   const [tp, s22] = await Promise.all([travelpayouts(start), stay22(start, end)]);
-  return json({ start, end, updated: now.toISOString(), platforms: { travelpayouts: tp, stay22: s22 } }, 200, origin);
+  const wanted = [...new Set([tp.currency, s22.currency, ...extra].filter((c): c is string => !!c && c !== 'AUD'))];
+  const fx = wanted.length ? await fxRates(wanted, start, end) : {};
+  return json({ start, end, updated: now.toISOString(), fx, fxSource: 'European Central Bank via frankfurter.dev', platforms: { travelpayouts: tp, stay22: s22 } }, 200, origin);
 });
