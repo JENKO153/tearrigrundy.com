@@ -81,10 +81,22 @@
     if (note) {
       const text = (money.disclosure || '').trim() || DEFAULT_DISCLOSURE;
       note.textContent = text;
-      note.style.display = shown || (PREVIEW && document.querySelector('.post-embed[data-value]:not([data-value=""])')) ? '' : 'none';
+      note.style.display = shown || document.querySelector('.post-body a[data-aff]') || (PREVIEW && document.querySelector('.post-embed[data-value]:not([data-value=""])')) ? '' : 'none';
     }
   }
   document.addEventListener('tg:content', hydrateEmbeds);
+
+  // Links are written as [words](https://address) in the post editor. Text is escaped first, and only
+  // https addresses are turned into links. Links to booking/travel sites are marked as sponsored.
+  const AFF_HOSTS = /(^|\.)(booking\.com|expedia\.[a-z.]+|hotels\.com|hotelscombined\.[a-z.]+|kayak\.[a-z.]+|momondo\.[a-z.]+|agoda\.[a-z.]+|vrbo\.com|getyourguide\.[a-z.]+|viator\.com|skyscanner\.[a-z.]+|stay22\.com|tp\.st|tp\.media)$/i;
+  function rich(escaped) {
+    return escaped.replace(/\[([^\]\n]{1,200})\]\((https:\/\/[^\s)]{1,600})\)/g, (m, label, url) => {
+      let host;
+      try { host = new URL(url.replace(/&amp;/g, '&')).hostname; } catch (e) { return m; }
+      const aff = AFF_HOSTS.test(host);
+      return `<a href="${url}" target="_blank" rel="noopener${aff ? ' sponsored' : ''}"${aff ? ' data-aff="1"' : ''}>${label}</a>`;
+    });
+  }
 
   function renderBlock(block) {
     if (block.style === 'map' || block.style === 'widget') {
@@ -103,15 +115,15 @@
       case 'subtitle':
         return `<h3 class="post-block-subtitle">${text}</h3>`;
       case 'paragraph-lg':
-        return `<p class="post-block-lead">${text}</p>`;
+        return `<p class="post-block-lead">${rich(text)}</p>`;
       case 'paragraph-sm':
-        return `<p class="post-block-sm">${text}</p>`;
+        return `<p class="post-block-sm">${rich(text)}</p>`;
       case 'bullets': {
-        const items = text.split('\n').map((s) => s.trim()).filter(Boolean).map((s) => `<li>${s}</li>`).join('');
+        const items = text.split('\n').map((s) => s.trim()).filter(Boolean).map((s) => `<li>${rich(s)}</li>`).join('');
         return items ? `<ul>${items}</ul>` : '';
       }
       default:
-        return `<p>${text}</p>`;
+        return `<p>${rich(text)}</p>`;
     }
   }
 
@@ -188,6 +200,7 @@
     window.ScrollReveal.observe(postContainer.querySelector('.reveal'));
     window.AdSlots.renderSlot('in-post', document.getElementById('adSlotInPost'));
     hydrateEmbeds();
+    document.dispatchEvent(new Event('tg:post-rendered'));
   }
 
   function renderRelated(post, allPosts) {

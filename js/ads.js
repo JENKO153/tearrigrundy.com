@@ -67,10 +67,14 @@ window.AdSlots = (function () {
 
   // Stay22 "Let Me Allez": swaps hotel/booking links for earning ones. The script address is fixed;
   // only the owner's script ID is configurable.
+  // On a post page, wait until the post text has been drawn so the script has something to scan.
   let stay22Loaded = false;
+  let postReady = !document.getElementById('postContainer');
+  document.addEventListener('tg:post-rendered', () => { postReady = true; loadStay22(); });
+  setTimeout(() => { postReady = true; loadStay22(); }, 10000);
   function loadStay22() {
     const st = money().stay22 || {};
-    if (PREVIEW || stay22Loaded || !st.linkSwap || !/^[A-Za-z0-9_-]{8,64}$/.test(st.lma || '')) return;
+    if (!postReady || PREVIEW || stay22Loaded || !st.linkSwap || !/^[A-Za-z0-9_-]{8,64}$/.test(st.lma || '')) return;
     stay22Loaded = true;
     window.Stay22 = window.Stay22 || {};
     window.Stay22.params = { lmaID: st.lma };

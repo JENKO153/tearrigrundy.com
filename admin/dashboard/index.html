@@ -74,6 +74,18 @@
   </div>
 </div>
 
+<!-- Add a link -->
+<div class="a-overlay" id="linkModal" role="dialog" aria-modal="true" aria-labelledby="linkTitle">
+  <form class="a-modal" id="linkForm" autocomplete="off">
+    <h3 id="linkTitle">Add a link</h3>
+    <p>Turn words in your post into a link, for example a hotel on Booking.com.</p>
+    <div class="a-err" id="linkErr" role="alert"></div>
+    <div class="a-field"><label for="linkText">Words to show</label><input id="linkText" maxlength="200"></div>
+    <div class="a-field"><label for="linkUrl">Web address</label><input id="linkUrl" placeholder="https://www.booking.com/hotel/…" inputmode="url" spellcheck="false"></div>
+    <div class="btns"><button type="button" class="a-btn ghost" id="linkCancel">Cancel</button><button type="submit" class="a-btn">Add link</button></div>
+  </form>
+</div>
+
 <div class="a-toasts" id="toasts" aria-live="polite"></div>
 
 <script src="/js/config.js"></script>

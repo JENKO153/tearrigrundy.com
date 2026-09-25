@@ -58,7 +58,7 @@
             <div class="a-field" style="margin-bottom:0"><label for="fExcerpt">Short excerpt <span class="count" id="exCount">0/${EXCERPT_MAX}</span></label>
               <textarea id="fExcerpt" rows="2" maxlength="${EXCERPT_MAX}" placeholder="One sentence that shows on the blog cards"></textarea></div>
           </div>
-          <div class="a-card"><h2>Post content</h2><p class="hint">Build it block by block. Drag a block by its handle (or use the arrows) to reorder. You can drop photos straight onto this area.</p>
+          <div class="a-card"><h2>Post content</h2><p class="hint">Build it block by block. Drag a block by its handle (or use the arrows) to reorder. You can drop photos straight onto this area. To link words (like a hotel), select them and press <b>Link</b> (or Ctrl/Cmd + K).</p>
             <div class="a-blocks" id="blocks"></div>
             <div class="a-add" id="addRow">
               <button type="button" data-add="title">+ Heading</button><button type="button" data-add="subtitle">+ Subheading</button>
@@ -123,6 +123,7 @@
       row.innerHTML = `<div class="a-block-top"><span class="a-grip" title="Drag to reorder" aria-hidden="true">⠿</span>
         <span class="a-block-type"></span>
         <select class="b-style" aria-label="Block type">${STYLES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+        <button type="button" class="a-icon b-link" data-act="link" title="Turn selected words into a link (Ctrl/Cmd+K)">Link</button>
         <button type="button" class="a-icon" data-act="up" title="Move up" aria-label="Move up">↑</button>
         <button type="button" class="a-icon" data-act="down" title="Move down" aria-label="Move down">↓</button>
         <button type="button" class="a-icon danger" data-act="del" title="Remove" aria-label="Remove block">✕</button></div>
@@ -156,11 +157,24 @@
     }
     let dragged = null;
     const isEmbed = (s) => s === 'map' || s === 'widget';
+    const LINKABLE = ['paragraph-lg', 'paragraph', 'paragraph-sm', 'bullets'];
+    async function addLink(row) {
+      const ta = row.querySelector('.b-text');
+      const from = ta.selectionStart, to = ta.selectionEnd;
+      const res = await A.linkDialog(ta.value.slice(from, to));
+      ta.focus();
+      if (!res) return;
+      const md = `[${res.text}](${res.url})`;
+      ta.value = ta.value.slice(0, from) + md + ta.value.slice(to);
+      ta.setSelectionRange(from + md.length, from + md.length);
+      ta.dispatchEvent(new Event('input', { bubbles: true }));
+    }
     function modeFor(row) {
       const s = row.querySelector('.b-style').value;
       const ta = row.querySelector('.b-text');
       const photo = s === 'photo', embed = isEmbed(s);
       row.querySelector('.b-photo').classList.toggle('hidden', !photo);
+      row.querySelector('.b-link').classList.toggle('hidden', !LINKABLE.includes(s));
       row.querySelector('.b-embed').classList.toggle('hidden', !embed);
       if (embed) {
         const v = row.querySelector('.b-embed-val');
@@ -206,6 +220,7 @@
       const act = e.target.closest('[data-act]');
       if (e.target.closest('.photo-pick')) { row.querySelector('.b-file').click(); return; }
       if (!act) return;
+      if (act.dataset.act === 'link') { addLink(row); return; }
       if (act.dataset.act === 'del') { row.remove(); if (!blocksEl.children.length) addBlock({ style: 'paragraph-lg' }); }
       if (act.dataset.act === 'up' && row.previousElementSibling) blocksEl.insertBefore(row, row.previousElementSibling);
       if (act.dataset.act === 'down' && row.nextElementSibling) blocksEl.insertBefore(row.nextElementSibling, row);
@@ -221,7 +236,8 @@
       }
     });
     blocksEl.addEventListener('input', (e) => { if (e.target.classList.contains('b-text')) grow(e.target); });
-    blocksEl.addEventListener('keydown', (e) => { if (e.target.classList.contains('photo-pick') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.target.closest('.a-block').querySelector('.b-file').click(); } });
+    blocksEl.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && e.target.classList.contains('b-text') && LINKABLE.includes(e.target.closest('.a-block').querySelector('.b-style').value)) { e.preventDefault(); addLink(e.target.closest('.a-block')); return; } if (e.target.classList.contains('photo-pick') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.target.closest('.a-block').querySelector('.b-file').click(); } });
 
     const readBlocks = () => [...blocksEl.children].map((row) => {
       const b = readBlocksRaw(row);

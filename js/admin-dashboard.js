@@ -57,6 +57,26 @@
     (danger ? no : yes).focus();
   });
 
+  // Asks for the words + address of a link. Resolves { text, url } or null.
+  Admin.linkDialog = (text = '') => new Promise((resolve) => {
+    const modal = $('linkModal'), form = $('linkForm'), t = $('linkText'), u = $('linkUrl'), err = $('linkErr');
+    t.value = text; u.value = ''; err.classList.remove('show');
+    const done = (v) => { form.onsubmit = null; $('linkCancel').onclick = null; modal.onkeydown = null; closeModal(modal); resolve(v); };
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      let url = u.value.trim();
+      if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
+      const words = t.value.replace(/[\[\]]/g, '').trim();
+      const bad = !words ? 'Type the words that should be the link.' : !/^https:\/\/[^\s]+\.[^\s]+$/.test(url) ? 'Enter a full web address that starts with https://' : '';
+      if (bad) { err.textContent = bad; err.classList.remove('show'); void err.offsetWidth; err.classList.add('show'); return; }
+      done({ text: words, url: url.replace(/\(/g, '%28').replace(/\)/g, '%29') });
+    };
+    $('linkCancel').onclick = () => done(null);
+    modal.onkeydown = (e) => { if (e.key === 'Escape') done(null); };
+    openModal(modal);
+    (text ? u : t).focus();
+  });
+
   /* ---------- password re-check before anything permanent ---------- */
   function askPassword(label) {
     return new Promise((resolve) => {
