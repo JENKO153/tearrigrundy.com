@@ -48,8 +48,16 @@
           <div class="a-card"><h2>Site colours</h2>${SITE.map(row).join('')}</div>
           <div class="a-card"><h2>Menu bar</h2>${MENU.map(row).join('')}</div>
         </div>
-        <div class="a-prev">
+        <div class="a-prev a-prev-tall">
+          <div class="a-sample" id="sample" aria-label="Colour sample">
+            <div class="s-bar"><span class="s-logo">Tearri Grundy</span><span class="s-menu"><b>HOME</b><span>BLOG</span><span>ABOUT</span></span></div>
+            <div class="s-photo"><span class="s-logo s-hero">Tearri Grundy</span><span class="s-menu s-hero"><b>HOME</b><span>BLOG</span><span>ABOUT</span></span><em>Menu over a photo</em></div>
+            <div class="s-body"><span class="s-chip">Destinations</span><h4>Two Days in Kyoto</h4>
+              <p>Some body text with a <a>link</a> in it.</p><span class="s-btn">Read the blog</span><span class="s-btn2">Hover colour</span></div>
+            <div class="s-foot">Footer &amp; contact section</div>
+          </div>
           <div class="a-prev-bar"><h2><span class="live-dot"></span>Live preview</h2>
+            <div class="a-seg" id="jump"><button type="button" data-jump="top" class="on">Top</button><button type="button" data-jump="posts">Posts</button><button type="button" data-jump="footer">Footer</button></div>
             <div class="a-seg" id="pageSeg">${PAGES.map(([p, l], i) => `<button type="button" class="${i === 0 ? 'on' : ''}" data-page="${p}">${l}</button>`).join('')}</div>
             <div class="a-seg" id="dev"><button type="button" class="on" data-dev="desktop">Desktop</button><button type="button" data-dev="mobile">Mobile</button></div></div>
           <div class="a-frame-wrap" id="frameWrap"><iframe id="frame" title="Live preview of your site"></iframe></div>
@@ -112,7 +120,21 @@
       wrap.classList.toggle('mobile', device === 'mobile');
     }
     const ro = new ResizeObserver(fit); ro.observe(wrap);
-    function pushPreview() { if (frame.contentWindow) frame.contentWindow.postMessage({ type: 'tg:preview-settings', settings: { theme: vals } }, window.location.origin); }
+    function paintSample() { T.apply(vals, $('sample')); }
+    // Jump the preview to a part of the page where the colours show up
+    function jump(where) {
+      const d = frame.contentDocument, w = frame.contentWindow;
+      if (!d || !w) return;
+      const target = where === 'top' ? null : where === 'posts' ? d.querySelector('.ribbon, .filter-bar, .post-hero, .about-hero, #intro') : d.querySelector('.contact-band, .site-footer');
+      const top = target ? target.getBoundingClientRect().top + w.scrollY - 60 : 0;
+      w.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    }
+    $('jump').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-jump]'); if (!b) return;
+      $('jump').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+      jump(b.dataset.jump);
+    });
+    function pushPreview() { paintSample(); if (frame.contentWindow) frame.contentWindow.postMessage({ type: 'tg:preview-settings', settings: { theme: vals } }, window.location.origin); }
     const onMsg = (e) => { if (e.origin === window.location.origin && e.source === frame.contentWindow && e.data && e.data.type === 'tg:preview-ready') pushPreview(); };
     window.addEventListener('message', onMsg);
     frame.addEventListener('load', () => { fit(); pushPreview(); });
@@ -166,6 +188,7 @@
     }
 
     paint();
+    paintSample();
     bar();
     return function cleanup() { window.removeEventListener('message', onMsg); ro.disconnect(); $('savebar').onclick = null; void touched; };
   };

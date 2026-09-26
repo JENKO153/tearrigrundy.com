@@ -24,6 +24,7 @@
   --blush: #f7e6dd;          /* alpenglow tint */
   --glow: #e9ad93;           /* alpenglow */
 
+  --scrim: color-mix(in srgb, var(--pine) 72%, #000);   /* tint laid over hero photos */
   --menu: var(--ink);        /* menu links on the solid bar (customisable in the dashboard) */
   --logo: var(--pine);       /* the site name in the menu bar */
   --menu-hero: #ffffff;      /* menu + site name while over a full-screen photo */
@@ -203,7 +204,7 @@ img { max-width: 100%; display: block; }
 .hero-scrim {
   position: absolute; inset: 0;
   background:
-    linear-gradient(180deg, rgba(8, 30, 31, 0.55) 0%, rgba(8, 30, 31, 0.05) 26%, rgba(8, 30, 31, 0.1) 46%, rgba(6, 24, 25, 0.72) 82%, rgba(6, 24, 25, 0.9) 100%),
+    linear-gradient(180deg, color-mix(in srgb, var(--scrim) 55%, transparent) 0%, color-mix(in srgb, var(--scrim) 5%, transparent) 26%, color-mix(in srgb, var(--scrim) 10%, transparent) 46%, color-mix(in srgb, var(--scrim) 72%, transparent) 82%, color-mix(in srgb, var(--scrim) 90%, transparent) 100%),
     radial-gradient(900px 500px at 50% 110%, color-mix(in srgb, var(--terracotta) 24%, transparent), transparent 70%);
 }
 .hero-content { position: relative; z-index: 2; max-width: 860px; padding: 0 28px; }
@@ -264,7 +265,7 @@ img { max-width: 100%; display: block; }
 .blog-hero-bg { position: absolute; inset: -6% 0; background-size: cover; background-position: center 48%; animation: kenBurns 14s var(--ease) both; }
 .blog-hero-scrim {
   position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(8,30,31,0.6) 0%, rgba(8,30,31,0.2) 40%, rgba(6,24,25,0.82) 100%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--scrim) 60%, transparent) 0%, color-mix(in srgb, var(--scrim) 20%, transparent) 40%, color-mix(in srgb, var(--scrim) 82%, transparent) 100%);
 }
 .blog-hero-content { position: relative; z-index: 2; max-width: 700px; padding: 0 28px; }
 .blog-hero-content .hero-eyebrow { color: var(--white); }
@@ -520,7 +521,7 @@ section { padding: 104px 0; }
   .hero p { display: none; }
   .hero-eyebrow { font-size: 0.66rem; margin-bottom: 14px; }
   .hero-eyebrow::before, .hero-eyebrow::after { width: 26px; }
-  .hero-scrim { background: linear-gradient(180deg, rgba(8,30,31,0.55) 0%, rgba(8,30,31,0.08) 24%, rgba(8,30,31,0.15) 50%, rgba(6,24,25,0.82) 74%, rgba(6,24,25,0.95) 100%); }
+  .hero-scrim { background: linear-gradient(180deg, color-mix(in srgb, var(--scrim) 55%, transparent) 0%, color-mix(in srgb, var(--scrim) 8%, transparent) 24%, color-mix(in srgb, var(--scrim) 15%, transparent) 50%, color-mix(in srgb, var(--scrim) 82%, transparent) 74%, color-mix(in srgb, var(--scrim) 95%, transparent) 100%); }
   .scroll-cue { display: none; }
   .blog-hero-content h1 { font-size: 2.4rem; }
 }
