@@ -58,7 +58,13 @@
             <div class="a-field" style="margin-bottom:0"><label for="fExcerpt">Short excerpt <span class="count" id="exCount">0/${EXCERPT_MAX}</span></label>
               <textarea id="fExcerpt" rows="2" maxlength="${EXCERPT_MAX}" placeholder="One sentence that shows on the blog cards"></textarea></div>
           </div>
-          <div class="a-card"><h2>Post content</h2><p class="hint">Build it block by block. Drag a block by its handle (or use the arrows) to reorder. You can drop photos straight onto this area. To link words (like a hotel), select them and press <b>Link</b> (or Ctrl/Cmd + K).</p>
+          <div class="a-card"><h2>Post content</h2>
+            <details class="a-paste" id="pastePanel"><summary>✨ Paste your whole post</summary>
+              <p class="hint">Written it in ChatGPT, Word or Google Docs? Paste all of it here and it's split into headings, paragraphs and lists for you. Add photos afterwards wherever you like.</p>
+              <textarea id="pasteBox" rows="9" placeholder="Paste your whole blog post here…" aria-label="Paste your whole post"></textarea>
+              <div class="a-actions" style="margin-top:10px;align-items:center"><button class="a-btn sm" id="pasteGo" type="button">Turn it into a post</button><span class="hint" style="margin:0">Pasting straight into any block below works too.</span></div>
+            </details>
+            <p class="hint">Or build it block by block. Drag a block by its handle (or use the arrows) to reorder. Drop photos straight onto this area, or use <b>Add below</b> under any block. Select words and press <b>Link</b> (Ctrl/Cmd + K), <b>B</b> (bold) or <i>I</i> (italic).</p>
             <div class="a-blocks" id="blocks"></div>
             <div class="a-add" id="addRow">
               <button type="button" data-add="title">+ Heading</button><button type="button" data-add="subtitle">+ Subheading</button>
@@ -123,6 +129,8 @@
       row.innerHTML = `<div class="a-block-top"><span class="a-grip" title="Drag to reorder" aria-hidden="true">⠿</span>
         <span class="a-block-type"></span>
         <select class="b-style" aria-label="Block type">${STYLES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+        <button type="button" class="a-icon b-link" data-act="bold" title="Bold (Ctrl/Cmd+B)"><b>B</b></button>
+        <button type="button" class="a-icon b-link" data-act="italic" title="Italic (Ctrl/Cmd+I)"><i>I</i></button>
         <button type="button" class="a-icon b-link" data-act="link" title="Turn selected words into a link (Ctrl/Cmd+K)">Link</button>
         <button type="button" class="a-icon" data-act="up" title="Move up" aria-label="Move up">↑</button>
         <button type="button" class="a-icon" data-act="down" title="Move down" aria-label="Move down">↓</button>
@@ -130,7 +138,8 @@
         <textarea class="b-text" rows="2"></textarea>
         <div class="b-embed hidden"><input class="caption b-embed-val" maxlength="300" autocomplete="off"><input class="caption b-embed-cap" style="margin-top:8px" maxlength="80" placeholder="Heading above it (optional)"><p class="hint b-embed-hint"></p></div>
         <div class="b-photo hidden"><div class="photo-pick" tabindex="0" role="button" aria-label="Choose photo"></div>
-          <input class="caption b-cap" placeholder="Caption (optional)" maxlength="140"><input type="file" accept="image/*" class="hidden b-file"></div>`;
+          <input class="caption b-cap" placeholder="Caption (optional)" maxlength="140"><input type="file" accept="image/*" class="hidden b-file"></div>
+        <div class="a-insert"><span>Add below:</span><button type="button" data-ins="paragraph">Text</button><button type="button" data-ins="title">Heading</button><button type="button" data-ins="photo">Photo</button><button type="button" data-ins="bullets">List</button></div>`;
       row.querySelector('.b-style').value = style;
       const ta = row.querySelector('.b-text');
       if (style === 'photo') row.querySelector('.b-cap').value = b.text || '';
@@ -194,16 +203,52 @@
       pick.innerHTML = img ? `<img src="${esc(img)}" alt="">` : '<b style="color:var(--terracotta)">Drop a photo</b> or click to choose';
     }
     function setPhoto(row, url) { row.dataset.image = url; drawPhoto(row); }
-    function addBlock(b, focus) {
+    function addBlock(b, focus, after) {
       const row = makeBlock(b);
-      blocksEl.appendChild(row);
+      if (after && after.parentNode === blocksEl) after.after(row); else blocksEl.appendChild(row);
       const ta = row.querySelector('.b-text');
       if (focus) { row.scrollIntoView({ block: 'center', behavior: 'smooth' }); if (!ta.classList.contains('hidden')) ta.focus(); }
       return row;
     }
+    let photoAfter = null;   // when set, new photos go under this block instead of at the end
     async function addPhotoBlocks(files) {
-      for (const file of files) { const u = await takeImage(file); if (u) addBlock({ style: 'photo', image: u }); }
+      let anchor = photoAfter; photoAfter = null;
+      for (const file of files) { const u = await takeImage(file); if (u) anchor = addBlock({ style: 'photo', image: u }, false, anchor); }
       changed();
+    }
+    const growAll = () => blocksEl.querySelectorAll('.b-text:not(.hidden)').forEach(grow);
+
+    // Bold / italic around the selected words
+    function wrapSel(row, mark) {
+      const ta = row.querySelector('.b-text');
+      const a = ta.selectionStart, z = ta.selectionEnd, sel = ta.value.slice(a, z);
+      if (!sel) { A.toast('Select some words first.'); ta.focus(); return; }
+      const on = sel.length > mark.length * 2 && sel.startsWith(mark) && sel.endsWith(mark);
+      const out = on ? sel.slice(mark.length, -mark.length) : mark + sel + mark;
+      ta.value = ta.value.slice(0, a) + out + ta.value.slice(z);
+      ta.setSelectionRange(a, a + out.length); ta.focus();
+      ta.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    // Turn a big pasted text into blocks (see admin-paste.js). afterRow = where the paste happened.
+    const isEmptyRow = (row) => { const b = readBlocksRaw(row); return !(b.text || '').trim() && !b.image; };
+    function importText(raw, afterRow) {
+      const res = A.parsePost(raw);
+      if (!res.blocks.length) { A.toast('Nothing to add yet — paste some text first.', 'bad'); return 0; }
+      let ref = null;
+      if (afterRow) { ref = afterRow.nextSibling; if (isEmptyRow(afterRow)) afterRow.remove(); }
+      else if ([...blocksEl.children].every(isEmptyRow)) blocksEl.innerHTML = '';
+      const rows = res.blocks.map((b) => { const r = makeBlock(b); blocksEl.insertBefore(r, ref); return r; });
+      if (res.title && !f.title.value.trim()) f.title.value = res.title;
+      if (res.excerpt && !f.excerpt.value.trim()) { f.excerpt.value = res.excerpt; countEx(); }
+      growAll();
+      changed();
+      rows[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
+      const n = (s) => res.blocks.filter((b) => s.includes(b.style)).length;
+      const parts = [[n(['title', 'subtitle']), 'heading'], [n(['paragraph', 'paragraph-lg', 'paragraph-sm']), 'paragraph'], [n(['bullets']), 'list']]
+        .filter(([c]) => c).map(([c, l]) => `${c} ${l}${c === 1 ? '' : 's'}`);
+      A.toast(`Added ${res.blocks.length} blocks: ${parts.join(', ')}.${res.title ? ' Title filled in.' : ''} Have a quick look at the headings.`, 'ok');
+      return res.blocks.length;
     }
     $('addRow').addEventListener('click', (e) => {
       const btn = e.target.closest('[data-add]');
@@ -219,7 +264,14 @@
       if (!row) return;
       const act = e.target.closest('[data-act]');
       if (e.target.closest('.photo-pick')) { row.querySelector('.b-file').click(); return; }
+      const ins = e.target.closest('[data-ins]');
+      if (ins) {
+        if (ins.dataset.ins === 'photo') { photoAfter = row; $('multiFile').click(); return; }
+        addBlock({ style: ins.dataset.ins }, true, row); changed(); return;
+      }
       if (!act) return;
+      if (act.dataset.act === 'bold') { wrapSel(row, '**'); return; }
+      if (act.dataset.act === 'italic') { wrapSel(row, '*'); return; }
       if (act.dataset.act === 'link') { addLink(row); return; }
       if (act.dataset.act === 'del') { row.remove(); if (!blocksEl.children.length) addBlock({ style: 'paragraph-lg' }); }
       if (act.dataset.act === 'up' && row.previousElementSibling) blocksEl.insertBefore(row, row.previousElementSibling);
@@ -236,7 +288,23 @@
       }
     });
     blocksEl.addEventListener('input', (e) => { if (e.target.classList.contains('b-text')) grow(e.target); });
+    blocksEl.addEventListener('paste', (e) => {
+      const ta = e.target;
+      if (!ta.classList || !ta.classList.contains('b-text')) return;
+      const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+      if (!text) return;
+      const res = A.parsePost(text);
+      if (res.blocks.length < 2) return;            // an ordinary short paste
+      e.preventDefault();
+      importText(text, ta.closest('.a-block'));
+    });
+    $('pasteGo').addEventListener('click', () => {
+      if (importText($('pasteBox').value)) { $('pasteBox').value = ''; $('pastePanel').open = false; }
+    });
     blocksEl.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && ['b', 'i'].includes(e.key.toLowerCase()) && e.target.classList.contains('b-text') && LINKABLE.includes(e.target.closest('.a-block').querySelector('.b-style').value)) {
+        e.preventDefault(); wrapSel(e.target.closest('.a-block'), e.key.toLowerCase() === 'b' ? '**' : '*'); return;
+      }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && e.target.classList.contains('b-text') && LINKABLE.includes(e.target.closest('.a-block').querySelector('.b-style').value)) { e.preventDefault(); addLink(e.target.closest('.a-block')); return; } if (e.target.classList.contains('photo-pick') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.target.closest('.a-block').querySelector('.b-file').click(); } });
 
     const readBlocks = () => [...blocksEl.children].map((row) => {
@@ -317,6 +385,7 @@
       f.sched.checked = !!s.sched; f.when.value = s.when || ''; $('schedBox').classList.toggle('open', f.sched.checked);
       blocksEl.innerHTML = '';
       (s.blocks && s.blocks.length ? s.blocks : [{ style: 'paragraph-lg' }]).forEach((b) => addBlock(b));
+      growAll();
     }
     const fromPost = (p) => ({
       title: p.title, category: p.category, excerpt: p.excerpt, cover: p.image, sched: new Date(p.date) > new Date(),
@@ -450,6 +519,7 @@
       apply(fresh || { blocks: [{ style: 'paragraph-lg' }] });
     }
     refreshBar();
+    if (isNew && !A.dirty) $('pastePanel').open = true;   // a fresh post starts with the paste box open
 
     return function cleanup() {
       if (touched) persist.flush(); // don't lose the last few keystrokes

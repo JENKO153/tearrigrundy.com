@@ -23,7 +23,7 @@
 <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
 <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
+<body class="hero-page">
 
 <header class="site-header">
   <nav class="nav">
@@ -48,9 +48,17 @@
     <p data-cms="home.subtitle">Honest travel guides, food finds, and a few lessons learned the hard way — one country at a time.</p>
     <a href="/blog/" class="btn" data-cms="home.cta">Read the Blog</a>
   </div>
+  <a class="scroll-cue" href="#intro" aria-label="Scroll down">Scroll<i></i></a>
 </section>
 
-<section>
+<div class="ribbon" aria-hidden="true">
+  <div class="ribbon-track">
+    <span>Destinations</span><span>Food &amp; Drink</span><span>Travel Tips</span><span>Culture</span><span>Adventure</span><span>Hidden Gems</span><span>Slow Travel</span>
+    <span>Destinations</span><span>Food &amp; Drink</span><span>Travel Tips</span><span>Culture</span><span>Adventure</span><span>Hidden Gems</span><span>Slow Travel</span>
+  </div>
+</div>
+
+<section id="intro">
   <div class="container about-teaser">
     <div class="reveal-left">
       <span class="cursive-greeting" data-cms="home.greeting">Hello, I'm Tearri</span>
@@ -119,6 +127,7 @@
 <script src="/js/data.js"></script>
 <script src="/js/site-content.js"></script>
 <script src="/js/reveal.js"></script>
+<script src="/js/ui.js"></script>
 <script src="/js/ads.js"></script>
 <script src="/js/home.js"></script>
 </body>

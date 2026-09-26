@@ -90,6 +90,10 @@
   // https addresses are turned into links. Links to booking/travel sites are marked as sponsored.
   const AFF_HOSTS = /(^|\.)(booking\.com|expedia\.[a-z.]+|hotels\.com|hotelscombined\.[a-z.]+|kayak\.[a-z.]+|momondo\.[a-z.]+|agoda\.[a-z.]+|vrbo\.com|getyourguide\.[a-z.]+|viator\.com|skyscanner\.[a-z.]+|stay22\.com|tp\.st|tp\.media)$/i;
   function rich(escaped) {
+    // **bold** and *italic* (from pasted text), then links
+    escaped = escaped
+      .replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/(^|[^*])\*([^*\s][^*\n]*?)\*(?!\*)/g, '$1<em>$2</em>');
     return escaped.replace(/\[([^\]\n]{1,200})\]\((https:\/\/[^\s)]{1,600})\)/g, (m, label, url) => {
       let host;
       try { host = new URL(url.replace(/&amp;/g, '&')).hostname; } catch (e) { return m; }
