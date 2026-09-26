@@ -24,6 +24,10 @@
   --blush: #f7e6dd;          /* alpenglow tint */
   --glow: #e9ad93;           /* alpenglow */
 
+  --menu: var(--ink);        /* menu links on the solid bar (customisable in the dashboard) */
+  --logo: var(--pine);       /* the site name in the menu bar */
+  --menu-hero: #ffffff;      /* menu + site name while over a full-screen photo */
+
   --shadow: 0 18px 44px -18px rgba(14, 47, 48, 0.28);
   --shadow-soft: 0 8px 28px -12px rgba(14, 47, 48, 0.2);
   --radius: 18px;
@@ -102,7 +106,7 @@ img { max-width: 100%; display: block; }
   background: linear-gradient(100deg, transparent, rgba(255,255,255,0.35), transparent);
   transform: skewX(-20deg); opacity: 0;
 }
-.btn:hover { color: var(--white); border-color: var(--terracotta); transform: translateY(-2px); box-shadow: 0 14px 28px -12px rgba(192, 102, 63, 0.55); }
+.btn:hover { color: var(--white); border-color: var(--terracotta); transform: translateY(-2px); box-shadow: 0 14px 28px -12px rgba(192, 102, 63, 0.55); box-shadow: 0 14px 28px -12px color-mix(in srgb, var(--terracotta) 55%, transparent); }
 .btn:hover::before { transform: translateX(0); }
 .btn:hover::after { opacity: 1; left: 130%; transition: left 0.8s ease, opacity 0.2s; }
 .btn-outline { background: transparent; border-color: var(--pine); color: var(--pine); }
@@ -113,6 +117,7 @@ img { max-width: 100%; display: block; }
 .site-header {
   position: sticky; top: 0; z-index: 200;
   background: rgba(251, 248, 243, 0.94);
+  background: color-mix(in srgb, var(--cream) 94%, transparent);
   backdrop-filter: saturate(1.4) blur(14px);
   -webkit-backdrop-filter: saturate(1.4) blur(14px);
   border-bottom: 1px solid transparent;
@@ -129,40 +134,39 @@ img { max-width: 100%; display: block; }
 
 .nav-logo {
   font-family: 'Dancing Script', cursive; font-size: 2.15rem; font-weight: 700;
-  color: var(--pine); letter-spacing: 0.01em; line-height: 1; transition: color 0.3s ease, transform 0.4s var(--ease);
+  color: var(--logo); letter-spacing: 0.01em; line-height: 1; transition: color 0.3s ease, transform 0.4s var(--ease);
 }
-.nav-logo span { color: var(--terracotta); transition: color 0.3s ease; }
-.nav-logo:hover { color: var(--pine); transform: translateY(-1px); }
+.nav-logo span { color: inherit; }   /* one colour for the whole name */
+.nav-logo:hover { color: var(--logo); transform: translateY(-1px); }
 
 .nav-links { display: flex; gap: 36px; list-style: none; margin: 0; padding: 0; }
 .nav-links a {
-  position: relative; color: var(--ink); font-weight: 700; font-size: 0.74rem;
+  position: relative; color: var(--menu); font-weight: 700; font-size: 0.74rem;
   letter-spacing: 0.18em; text-transform: uppercase; padding: 6px 0; transition: color 0.3s ease;
 }
 .nav-links a::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1.5px; background: var(--terracotta);
   transform: scaleX(0); transform-origin: 100% 50%; transition: transform 0.45s var(--ease);
 }
-.nav-links a:hover, .nav-links a.active { color: var(--pine); }
+.nav-links a:hover, .nav-links a.active { color: var(--menu); }
 .nav-links a:hover::after, .nav-links a.active::after { transform: scaleX(1); transform-origin: 0 50%; }
 
 .nav-toggle { display: none; flex-direction: column; justify-content: center; gap: 6px; background: none; border: none; cursor: pointer; padding: 6px; width: 40px; height: 40px; }
-.nav-toggle span { width: 26px; height: 1.75px; background: var(--pine); display: block; transition: transform 0.35s var(--ease), opacity 0.2s ease, background 0.3s ease; transform-origin: center; }
+.nav-toggle span { width: 26px; height: 1.75px; background: var(--menu); display: block; transition: transform 0.35s var(--ease), opacity 0.2s ease, background 0.3s ease; transform-origin: center; }
 .nav-toggle.active span:nth-child(1) { transform: translateY(7.75px) rotate(45deg); }
 .nav-toggle.active span:nth-child(2) { opacity: 0; transform: scaleX(0); }
 .nav-toggle.active span:nth-child(3) { transform: translateY(-7.75px) rotate(-45deg); }
 
 /* Over a full-screen hero the header starts transparent with white type, then turns to frosted ivory. */
 .hero-page .site-header { position: fixed; left: 0; right: 0; background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
-.hero-page .site-header:not(.scrolled) .nav-logo, .hero-page .site-header:not(.scrolled) .nav-logo span { color: var(--white); }
-.hero-page .site-header:not(.scrolled) .nav-links a { color: rgba(255,255,255,0.92); }
-.hero-page .site-header:not(.scrolled) .nav-links a::after { background: var(--white); }
-.hero-page .site-header:not(.scrolled) .nav-toggle span { background: var(--white); }
-.hero-page .site-header.scrolled { background: rgba(251, 248, 243, 0.95); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); }
+.hero-page .site-header:not(.scrolled) .nav-logo, .hero-page .site-header:not(.scrolled) .nav-logo span { color: var(--menu-hero); }
+.hero-page .site-header:not(.scrolled) .nav-links a { color: var(--menu-hero); }
+.hero-page .site-header:not(.scrolled) .nav-links a::after { background: var(--menu-hero); }
+.hero-page .site-header:not(.scrolled) .nav-toggle span { background: var(--menu-hero); }
+.hero-page .site-header.scrolled { background: rgba(251, 248, 243, 0.95); background: color-mix(in srgb, var(--cream) 95%, transparent); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); }
 .hero-page .site-header:has(.nav-toggle.active) { background: var(--cream); }
-.hero-page .site-header:has(.nav-toggle.active) .nav-logo, .hero-page .site-header:has(.nav-toggle.active) .nav-logo span { color: var(--pine); }
-.hero-page .site-header:has(.nav-toggle.active) .nav-logo span { color: var(--terracotta); }
-.hero-page .site-header:has(.nav-toggle.active) .nav-toggle span { background: var(--pine); }
+.hero-page .site-header:has(.nav-toggle.active) .nav-logo, .hero-page .site-header:has(.nav-toggle.active) .nav-logo span { color: var(--logo); }
+.hero-page .site-header:has(.nav-toggle.active) .nav-toggle span { background: var(--menu); }
 
 @media (max-width: 760px) {
   .nav-toggle { display: flex; }
@@ -179,9 +183,9 @@ img { max-width: 100%; display: block; }
   .nav-links.open li:nth-child(1) { transition-delay: 0.08s; }
   .nav-links.open li:nth-child(2) { transition-delay: 0.14s; }
   .nav-links.open li:nth-child(3) { transition-delay: 0.2s; }
-  .nav-links a, .hero-page .site-header:not(.scrolled) .nav-links a { display: block; padding: 18px; color: var(--ink); border-bottom: 1px solid var(--sand-dark); font-size: 0.8rem; }
+  .nav-links a, .hero-page .site-header:not(.scrolled) .nav-links a { display: block; padding: 18px; color: var(--menu); border-bottom: 1px solid var(--sand-dark); font-size: 0.8rem; }
   .nav-links a::after { display: none; }
-  .nav-links a:hover, .nav-links a.active { background: var(--mist); color: var(--pine); }
+  .nav-links a:hover, .nav-links a.active { background: var(--mist); color: var(--menu); }
 }
 
 /* ---------- Hero ---------- */
@@ -200,7 +204,7 @@ img { max-width: 100%; display: block; }
   position: absolute; inset: 0;
   background:
     linear-gradient(180deg, rgba(8, 30, 31, 0.55) 0%, rgba(8, 30, 31, 0.05) 26%, rgba(8, 30, 31, 0.1) 46%, rgba(6, 24, 25, 0.72) 82%, rgba(6, 24, 25, 0.9) 100%),
-    radial-gradient(900px 500px at 50% 110%, rgba(192, 102, 63, 0.22), transparent 70%);
+    radial-gradient(900px 500px at 50% 110%, color-mix(in srgb, var(--terracotta) 24%, transparent), transparent 70%);
 }
 .hero-content { position: relative; z-index: 2; max-width: 860px; padding: 0 28px; }
 .hero-eyebrow {
@@ -455,7 +459,7 @@ section { padding: 104px 0; }
 }
 .contact-band::before {
   content: ""; position: absolute; inset: 0;
-  background: radial-gradient(600px 380px at 12% 12%, rgba(143, 203, 200, 0.22), transparent 70%), radial-gradient(640px 420px at 92% 95%, rgba(192, 102, 63, 0.32), transparent 70%);
+  background: radial-gradient(600px 380px at 12% 12%, color-mix(in srgb, var(--glacier) 24%, transparent), transparent 70%), radial-gradient(640px 420px at 92% 95%, color-mix(in srgb, var(--terracotta) 34%, transparent), transparent 70%);
 }
 .contact-band::after {   /* mountain ridge cut into the top edge */
   content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 90px; z-index: 1;

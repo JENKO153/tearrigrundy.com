@@ -48,6 +48,7 @@
       const v = safeEmail(get(settings, el.dataset.cmsMailto));
       if (v) el.href = 'mailto:' + v;
     });
+    if (window.TG_THEME) window.TG_THEME.apply(settings.theme);   // no saved theme = the built-in colours
     window.SiteContent.settings = settings;
     document.dispatchEvent(new CustomEvent('tg:content', { detail: settings }));
   }

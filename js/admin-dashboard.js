@@ -116,7 +116,7 @@
   };
 
   /* ---------- router ---------- */
-  const NAV_FOR = { home: 'home', posts: 'posts', post: 'post', site: 'site', security: 'security', earnings: 'earnings', categories: 'categories' };
+  const NAV_FOR = { home: 'home', posts: 'posts', post: 'post', site: 'site', security: 'security', earnings: 'earnings', categories: 'categories', appearance: 'appearance' };
   let cleanup = null, guarding = false;
 
   Admin.go = (hash) => { if (location.hash === hash) route(); else location.hash = hash; };

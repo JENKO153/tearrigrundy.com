@@ -129,7 +129,7 @@
       $('dev').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
       fit();
     });
-    function pushPreview() { if (frame.contentWindow) frame.contentWindow.postMessage({ type: 'tg:preview-settings', settings: nested(false) }, window.location.origin); }
+    function pushPreview() { if (frame.contentWindow) frame.contentWindow.postMessage({ type: 'tg:preview-settings', settings: Object.assign(nested(false), saved.theme ? { theme: saved.theme } : {}) }, window.location.origin); }
     const sendPreview = A.debounce(pushPreview, 100);
     const onMsg = (e) => { if (e.origin === window.location.origin && e.source === frame.contentWindow && e.data && e.data.type === 'tg:preview-ready') pushPreview(); };
     window.addEventListener('message', onMsg);
@@ -166,7 +166,8 @@
             if (vals[f.key].startsWith('data:')) vals[f.key] = await CMS.uploadImage(null, f.folder || 'site', dataUrlToBlob(vals[f.key]));
           }
           const out = nested(true);
-          if (saved.money) out.money = saved.money; // earnings settings live in the same record
+          if (saved.money) out.money = saved.money; // earnings + colours live in the same record
+          if (saved.theme) out.theme = saved.theme;
           await CMS.saveSettings(out);
           return out;
         });
